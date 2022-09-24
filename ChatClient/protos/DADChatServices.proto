@@ -1,0 +1,31 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "bankClient";
+
+service ChatServerService {
+  rpc Register (ChatClientRegisterRequest) returns (ChatClientRegisterReply);
+  rpc SendMessage (ChatMessageRequest) returns (ChatMessageReply);
+  rpc Update (ChatUpdateRequest) returns (ChatUpdateReply);
+}
+message ChatClientRegisterRequest {
+  string nick = 1;
+  string url = 2;	
+}
+message ChatClientRegisterReply {
+	bool ok = 1;
+}
+
+message ChatMessageRequest {
+	string nick = 1;
+	string message = 2;	
+}
+
+message ChatMessageReply {
+	bool ok = 1;
+}
+
+message ChatUpdateRequest {}
+
+message ChatUpdateReply {
+	string messages = 1;
+}
