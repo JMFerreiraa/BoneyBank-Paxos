@@ -1,4 +1,4 @@
-﻿using Grpc.Core;
+using Grpc.Core;
 using System;
 
 namespace BankServer // Note: actual namespace depends on the project name.
@@ -82,6 +82,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             server.Start();
             Console.WriteLine("BankServer listening on port " + Port);
             Console.WriteLine("Press any key to stop the server...");
+            Console.WriteLine("Joao e lindo");
             Console.ReadKey();
         }
     }
