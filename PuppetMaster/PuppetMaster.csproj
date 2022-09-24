@@ -14,12 +14,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="protos\DADChatServices.proto">
-      <GrpcServices>Both</GrpcServices>
-    </None>
+	  <Protobuf Include="protos\DADChatServices.proto" GrpcServices="Both" />
   </ItemGroup>
 
 </Project>

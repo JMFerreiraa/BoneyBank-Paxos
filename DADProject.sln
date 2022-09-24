@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.3.32901.215
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BankServer", "ChatServer\BankServer.csproj", "{EE6F5E14-2499-4A5D-8223-C89F63C61BC1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BankClient", "BankClient\BankClient.csproj", "{877D1769-0CC0-4973-96DF-4D1C351FDFC9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BankClient", "BankClient\BankClient.csproj", "{877D1769-0CC0-4973-96DF-4D1C351FDFC9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BoneyServer", "BoneyServer\BoneyServer.csproj", "{39052810-87E6-4E13-8C67-94D09B73B6F2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BoneyServer", "BoneyServer\BoneyServer.csproj", "{39052810-87E6-4E13-8C67-94D09B73B6F2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PuppetMaster", "PuppetMaster\PuppetMaster.csproj", "{1A808F83-84E3-4444-8CDA-93384A038FC1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PuppetMaster", "PuppetMaster\PuppetMaster.csproj", "{1A808F83-84E3-4444-8CDA-93384A038FC1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BankServer", "BankServer\BankServer.csproj", "{C78AAF93-E1A4-41E1-86F8-458C6B38940C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{EE6F5E14-2499-4A5D-8223-C89F63C61BC1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EE6F5E14-2499-4A5D-8223-C89F63C61BC1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EE6F5E14-2499-4A5D-8223-C89F63C61BC1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EE6F5E14-2499-4A5D-8223-C89F63C61BC1}.Release|Any CPU.Build.0 = Release|Any CPU
 		{877D1769-0CC0-4973-96DF-4D1C351FDFC9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{877D1769-0CC0-4973-96DF-4D1C351FDFC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{877D1769-0CC0-4973-96DF-4D1C351FDFC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -33,6 +29,10 @@ Global
 		{1A808F83-84E3-4444-8CDA-93384A038FC1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1A808F83-84E3-4444-8CDA-93384A038FC1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1A808F83-84E3-4444-8CDA-93384A038FC1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C78AAF93-E1A4-41E1-86F8-458C6B38940C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C78AAF93-E1A4-41E1-86F8-458C6B38940C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C78AAF93-E1A4-41E1-86F8-458C6B38940C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C78AAF93-E1A4-41E1-86F8-458C6B38940C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
