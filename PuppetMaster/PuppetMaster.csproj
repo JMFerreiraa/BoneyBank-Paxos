@@ -16,5 +16,4 @@
     </PackageReference>
 	  <Protobuf Include="protos\DADChatServices.proto" GrpcServices="Both" />
   </ItemGroup>
-
 </Project>
