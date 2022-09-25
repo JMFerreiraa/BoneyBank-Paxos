@@ -18,7 +18,7 @@ message ChatClientRegisterReply {
 }
 
 message ChatMessageRequest {
-	string nick = 1;
+	string nick {}= 1;
 	string message = 2;	
 }
 
@@ -31,3 +31,38 @@ message ChatUpdateRequest {}
 message ChatUpdateReply {
 	string messages = 1;
 }
+
+// NEW HERE VER DPS ---- account number ?
+
+service BankClientCommunications{
+	rpc Deposite(DepositeRequest) returns (DepositeReply);
+	rpc Withdrawal(WithdrawalRequest) returns (WithdrawalReply);
+	rpc Read(ReadRequest) returns (ReadReply);
+}
+
+message DepositeRequest{
+	string name = 1;
+	int32 amount = 2;
+}
+
+message DepositeReply{
+	bool ok = 1;
+}
+
+message WithdrawalRequest{
+	string name = 1;
+	int32 amount = 2;
+}
+
+message WithdrawalReply{
+	bool ok = 1;
+}
+
+message ReadRequest{
+	string name = 1;
+}
+
+message ReadReply{
+	bool ok = 1;
+}
+
