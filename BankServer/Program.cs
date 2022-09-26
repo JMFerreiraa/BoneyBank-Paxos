@@ -69,14 +69,41 @@ namespace BankServer // Note: actual namespace depends on the project name.
         }
     }
 
-    internal class Program
+    public class BankService : BankClientCommunications.BankClientCommunicationsBase
+    {
+        public BankService()
+        {
+        }
+
+        public override Task<DepositeReply> Deposite(
+            DepositeRequest request, ServerCallContext context)
+        {
+            return Task.FromResult(Dep(request));
+        }
+
+        public DepositeReply Dep(DepositeRequest request)
+        {
+            lock (this)
+            {
+                Console.WriteLine("DEP MADE " + request.Name);
+            }
+            return new DepositeReply
+            {
+                Ok = true
+            };
+        }
+    }
+
+
+
+        internal class Program
     {
         static void Main(string[] args)
         {
             const int Port = 1001;
             Server server = new Server
             {
-                Services = { ChatServerService.BindService(new ServerService()) },
+                Services = { BankClientCommunications.BindService(new BankService()) },
                 Ports = { new ServerPort("localhost", Port, ServerCredentials.Insecure) }
             };
             server.Start();

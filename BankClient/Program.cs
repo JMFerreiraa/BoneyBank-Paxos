@@ -18,11 +18,11 @@ namespace bankClient // Note: actual namespace depends on the project name.
         static void Main(string[] args)
         {
             GrpcChannel channel;
-            ChatServerService.ChatServerServiceClient client;
+            BankClientCommunications.BankClientCommunicationsClient client;
             channel = GrpcChannel.ForAddress("http://localhost:1001");
-            client = new ChatServerService.ChatServerServiceClient(channel);
-            client.SendMessage(new ChatMessageRequest { Nick = "eu", Message = "teste" });
-            System.Console.WriteLine("Hello World! I am BankClient!");
+            client = new BankClientCommunications.BankClientCommunicationsClient(channel);
+            //client.SendMessage(new ChatMessageRequest { Nick = "eu", Message = "teste" });
+            Console.WriteLine("Hello World! I am BankClient!");
 
             while (on)
             {
@@ -35,13 +35,13 @@ namespace bankClient // Note: actual namespace depends on the project name.
                         switch (command_words[0])
                         {
                             case "D":
-                                deposite(float.Parse(command_words[1], CultureInfo.InvariantCulture.NumberFormat));
+                                deposite(float.Parse(command_words[1], CultureInfo.InvariantCulture.NumberFormat), client);
                                 break;
                             case "W":
-                                withdrawal(float.Parse(command_words[1], CultureInfo.InvariantCulture.NumberFormat));
+                                withdrawal(float.Parse(command_words[1], CultureInfo.InvariantCulture.NumberFormat), client);
                                 break;
                             case "R":
-                                readBalance();
+                                readBalance(client);
                                 break;
                             case "S":
                                 wait(Int32.Parse(command_words[1]));
@@ -63,17 +63,18 @@ namespace bankClient // Note: actual namespace depends on the project name.
             
         }
 
-        static void deposite(float amount)
+        static void deposite(float amount, BankClientCommunications.BankClientCommunicationsClient client)
         {
             Console.WriteLine(amount.ToString());
+            var reply = client.Deposite(new DepositeRequest { Amount = amount, Name = "jeremias" });
         }
 
-        static void withdrawal(float amount)
+        static void withdrawal(float amount, BankClientCommunications.BankClientCommunicationsClient client)
         {
             Console.WriteLine(amount.ToString());
         }    
 
-        static void readBalance()
+        static void readBalance(BankClientCommunications.BankClientCommunicationsClient client)
         {
             Console.WriteLine("READ");
         }

@@ -27,3 +27,36 @@ message ChatUpdateRequest {}
 message ChatUpdateReply {
 	string messages = 1;
 }
+
+
+service BankClientCommunications{
+	rpc Deposite(DepositeRequest) returns (DepositeReply);
+	rpc Withdrawal(WithdrawalRequest) returns (WithdrawalReply);
+	rpc Read(ReadRequest) returns (ReadReply);
+}
+
+message DepositeRequest{
+	string name = 1;
+	float amount = 2;
+}
+
+message DepositeReply{
+	bool ok = 1;
+}
+
+message WithdrawalRequest{
+	string name = 1;
+	float amount = 2;
+}
+
+message WithdrawalReply{
+	bool ok = 1;
+}
+
+message ReadRequest{
+	string name = 1;
+}
+
+message ReadReply{
+	bool ok = 1;
+}
