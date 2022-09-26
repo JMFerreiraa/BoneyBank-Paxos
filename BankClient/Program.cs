@@ -21,10 +21,15 @@ namespace bankClient // Note: actual namespace depends on the project name.
             BankClientCommunications.BankClientCommunicationsClient client;
             channel = GrpcChannel.ForAddress("http://localhost:1001");
             client = new BankClientCommunications.BankClientCommunicationsClient(channel);
-            //client.SendMessage(new ChatMessageRequest { Nick = "eu", Message = "teste" });
-            Console.WriteLine("Hello World! I am BankClient!");
-
-            while (on)
+            Console.WriteLine("Nickname for bank registry:");
+            string name = Console.ReadLine();
+            var reply = client.Register(new RegisterRequest { Name = name });
+            bool registered = reply.Ok;
+            if (registered)
+            {
+                Console.WriteLine("Client Registered with success!");
+            }
+            while (registered)
             {
                 try
                 {

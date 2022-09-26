@@ -3,82 +3,52 @@ using System;
 
 namespace BankServer // Note: actual namespace depends on the project name.
 {
-
-    public class ServerService : ChatServerService.ChatServerServiceBase
-    {
-        private Dictionary<string, string> clientMap = new Dictionary<string, string>();
-        private Dictionary<string, string> messageList = new Dictionary<string, string>();
-        string allMessages = "";
-
-        public ServerService()
-        {
-        }
-
-        public override Task<ChatClientRegisterReply> Register(
-            ChatClientRegisterRequest request, ServerCallContext context)
-        {
-            return Task.FromResult(Reg(request));
-        }
-
-        public override Task<ChatMessageReply> SendMessage(
-             ChatMessageRequest request, ServerCallContext context)
-        {
-            return Task.FromResult(Mess(request));
-        }
-
-        public override Task<ChatUpdateReply> Update(
-            ChatUpdateRequest request, ServerCallContext context)
-        {
-            return Task.FromResult(Upd(request));
-        }
-
-        public ChatClientRegisterReply Reg(ChatClientRegisterRequest request)
-        {
-            lock (this)
-            {
-                clientMap.Add(request.Nick, request.Url);
-            }
-            Console.WriteLine($"Registered client {request.Nick} with URL {request.Url}");
-            return new ChatClientRegisterReply
-            {
-                Ok = true
-            };
-        }
-        public ChatMessageReply Mess(ChatMessageRequest request)
-        {
-            lock (this)
-            {
-                //messageList.Add(request.Nick, request.Message);
-                allMessages += request.Nick + " : " + request.Message + "\n";
-
-            }
-            Console.WriteLine($"New Message from {request.Nick} registered on system: {request.Message}");
-            return new ChatMessageReply
-            {
-                Ok = true
-            };
-        }
-
-        public ChatUpdateReply Upd(ChatUpdateRequest request)
-        {
-            Console.WriteLine("Sending Updated Chat!");
-            return new ChatUpdateReply
-            {
-                Messages = allMessages
-            };
-        }
-    }
-
     public class BankService : BankClientCommunications.BankClientCommunicationsBase
     {
+
+        private Dictionary<string, int> accounts = new Dictionary<string, int>();
+
         public BankService()
         {
+        }
+
+        public override Task<RegisterReply> Register(
+            RegisterRequest request, ServerCallContext context)
+        {
+            return Task.FromResult(Reg(request));
         }
 
         public override Task<DepositeReply> Deposite(
             DepositeRequest request, ServerCallContext context)
         {
             return Task.FromResult(Dep(request));
+        }
+
+        public override Task<WithdrawalReply> Withdrawal(
+            WithdrawalRequest request, ServerCallContext context)
+        {
+            return Task.FromResult(Widr(request));
+        }
+
+        public RegisterReply Reg(RegisterRequest request)
+        {
+            bool success;
+            lock (this)
+            {
+                if (accounts.ContainsKey(request.Name))
+                    success = false;
+                else
+                {
+                    accounts.Add(request.Name, 0);
+                    success = true;
+                }
+                
+                Console.WriteLine("New Client registered with name " + request.Name);
+            }
+            return new RegisterReply
+            {
+                Ok = success
+            };
         }
 
         public DepositeReply Dep(DepositeRequest request)
@@ -88,6 +58,19 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 Console.WriteLine("DEP MADE " + request.Name);
             }
             return new DepositeReply
+            {
+                Ok = true
+            };
+        }
+
+
+        public WithdrawalReply Widr(WithdrawalRequest request)
+        {
+            lock (this)
+            {
+                Console.WriteLine("DEP MADE " + request.Name);
+            }
+            return new WithdrawalReply
             {
                 Ok = true
             };
@@ -109,7 +92,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
             server.Start();
             Console.WriteLine("BankServer listening on port " + Port);
             Console.WriteLine("Press any key to stop the server...");
-            Console.WriteLine("Hugo es lindo!");
             Console.ReadKey();
         }
     }
