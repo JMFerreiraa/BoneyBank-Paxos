@@ -59,7 +59,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
                 try
                 {
                     string command = Console.ReadLine();
-                    Console.WriteLine(command);
+                    //Console.WriteLine(command);
                     if(command != null) {
                         string[] command_words = command.Split(' ');
                         switch (command_words[0])
