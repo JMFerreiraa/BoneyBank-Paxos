@@ -61,6 +61,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
                 }
                 catch(Exception e)
                 {
+                    Console.WriteLine("Deu Errro!");
                     Console.WriteLine(e.ToString());
                 }
 
