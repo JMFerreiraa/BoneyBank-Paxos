@@ -6,7 +6,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
     public class BankService : BankClientCommunications.BankClientCommunicationsBase
     {
 
-        private Dictionary<string, int> accounts = new Dictionary<string, int>();
+        private Dictionary<string, float> accounts = new Dictionary<string, float>();
 
         public BankService()
         {
@@ -35,15 +35,17 @@ namespace BankServer // Note: actual namespace depends on the project name.
             bool success;
             lock (this)
             {
-                if (accounts.ContainsKey(request.Name))
+                if (accounts.ContainsKey(request.Name)) { 
                     success = false;
+                    Console.WriteLine("New Client tried to register with name " + request.Name+ " but failed!");
+                }
                 else
                 {
                     accounts.Add(request.Name, 0);
                     success = true;
+                    Console.WriteLine("New Client registered with name " + request.Name);
                 }
                 
-                Console.WriteLine("New Client registered with name " + request.Name);
             }
             return new RegisterReply
             {
@@ -53,9 +55,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public DepositeReply Dep(DepositeRequest request)
         {
+            Console.WriteLine("New Deposit by " + request.Name + "amount: " + request.Amount);
             lock (this)
             {
-                Console.WriteLine("DEP MADE " + request.Name);
+                accounts[request.Name] += request.Amount;
             }
             return new DepositeReply
             {
@@ -66,13 +69,18 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public WithdrawalReply Widr(WithdrawalRequest request)
         {
+            Console.WriteLine("New Widrawal by " + request.Name + "amount: " + request.Amount);
+            bool success = false;
             lock (this)
             {
-                Console.WriteLine("DEP MADE " + request.Name);
+                if (accounts[request.Name] - request.Amount > 0) { 
+                    accounts[request.Name] -= request.Amount;
+                    success = true;
+                }
             }
             return new WithdrawalReply
             {
-                Ok = true
+                Ok = success
             };
         }
     }
