@@ -38,5 +38,5 @@ message ReadRequest{
 }
 
 message ReadReply{
-	bool ok = 1;
+	float amount = 1;
 }

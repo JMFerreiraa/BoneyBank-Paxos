@@ -21,7 +21,6 @@ message RegisterReply{
 	bool ok = 1;
 }
 
-
 message DepositeRequest{
 	string name = 1;
 	float amount = 2;
@@ -45,6 +44,6 @@ message ReadRequest{
 }
 
 message ReadReply{
-	bool ok = 1;
+	float amount = 1;
 }
 

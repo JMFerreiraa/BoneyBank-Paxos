@@ -7,6 +7,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
     {
 
         private Dictionary<string, float> accounts = new Dictionary<string, float>();
+        bool frozen = false;
+        int id = -1;
+
+        
 
         public BankService()
         {
@@ -28,6 +32,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
             WithdrawalRequest request, ServerCallContext context)
         {
             return Task.FromResult(Widr(request));
+        }
+        public override Task<ReadReply> Read(
+            ReadRequest request, ServerCallContext context)
+        {
+            return Task.FromResult(Rd(request));
         }
 
         public RegisterReply Reg(RegisterRequest request)
@@ -83,8 +92,22 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 Ok = success
             };
         }
-    }
 
+
+        public ReadReply Rd(ReadRequest request)
+        {
+            Console.WriteLine("New Read by " + request.Name);
+            float amount;
+            lock (this)
+            {
+                amount = accounts[request.Name];
+            }
+            return new ReadReply
+            {
+                Amount = amount
+            };
+        }
+    }
 
 
         internal class Program
