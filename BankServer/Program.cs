@@ -10,7 +10,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         bool frozen = false;
         int id = -1;
 
-        
+
         public BankService()
         {
         }
@@ -111,9 +111,64 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         internal class Program
     {
+
+        private Dictionary<int, string> clientsAddresses = new Dictionary<int, string>();
+        private Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
+        private Dictionary<int, string> boneysAddresses = new Dictionary<int, string>();
+
+        int numberOfSlots = 0;
+        string timeToStart;
+        int slotTime = 0;
+
+        public void parseConfigFile()
+        {
+            var currentDir = Directory.GetParent(System.IO.Directory.GetCurrentDirectory()).Parent.Parent.Parent + "\\ConfigurationFile.txt";
+
+            string[] lines = System.IO.File.ReadAllLines(currentDir);
+            foreach (string line in lines)
+            {
+                string[] config = line.Split(" ");
+
+                switch (config[0])
+                {
+                    case "P":
+                        switch (config[2])
+                        {
+                            case "boney":
+                                boneysAddresses.Add(Int32.Parse(config[1]), config[3]);
+                                break;
+                            case "bank":
+                                serversAddresses.Add(Int32.Parse(config[1]), config[3]);
+                                break;
+                            case "client":
+                                clientsAddresses.Add(Int32.Parse(config[1]), null);
+                                break;
+                        }
+                        break;
+                    case "S":
+                        numberOfSlots = Int32.Parse(config[1]);
+                        break;
+                    case "T":
+                        timeToStart = config[1];
+                        break;
+                    case "D":
+                        slotTime = Int32.Parse(config[1]);
+                        break;
+                    case "F":
+                        foreach(string proc in line.Replace(")", "").Split(" ("))
+                        {
+                            Console.WriteLine(proc);
+                        }
+                        break;
+                    case "_": //Discard patter (matches everything)
+                        break;
+                }
+            }
+        }
         static void Main(string[] args)
         {
             const int Port = 1001;
+            Program p = new Program();
             Server server = new Server
             {
                 Services = { BankClientCommunications.BindService(new BankService()) },
@@ -122,6 +177,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
             server.Start();
             Console.WriteLine("BankServer listening on port " + Port);
             Console.WriteLine("Press any key to stop the server...");
+
+            p.parseConfigFile();
+
+
             Console.ReadKey();
         }
     }
