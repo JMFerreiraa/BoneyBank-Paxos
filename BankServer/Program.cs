@@ -11,7 +11,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
         int id = -1;
 
         
-
         public BankService()
         {
         }

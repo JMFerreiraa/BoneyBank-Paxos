@@ -13,7 +13,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
     {
         private int clientId;
         private int clientSequenceNumber;
-        bool on = true;
+        bool on = true; 
         string clientName;
 
         void deposite(float amount, BankClientCommunications.BankClientCommunicationsClient client)
