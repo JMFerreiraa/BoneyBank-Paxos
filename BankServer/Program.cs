@@ -115,10 +115,12 @@ namespace BankServer // Note: actual namespace depends on the project name.
         private Dictionary<int, string> clientsAddresses = new Dictionary<int, string>();
         private Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
         private Dictionary<int, string> boneysAddresses = new Dictionary<int, string>();
+        private Dictionary<int, List<int>> status = new Dictionary<int, List<int>>();
 
         int numberOfSlots = 0;
         string timeToStart;
         int slotTime = 0;
+        int numberOfServers = 0;
 
         public void parseConfigFile()
         {
@@ -135,9 +137,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         switch (config[2])
                         {
                             case "boney":
+                                numberOfServers += 1;
                                 boneysAddresses.Add(Int32.Parse(config[1]), config[3]);
                                 break;
                             case "bank":
+                                numberOfServers += 1;
                                 serversAddresses.Add(Int32.Parse(config[1]), config[3]);
                                 break;
                             case "client":
@@ -155,10 +159,19 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         slotTime = Int32.Parse(config[1]);
                         break;
                     case "F":
-                        foreach(string proc in line.Replace(")", "").Split(" ("))
+                        string[] proc = line.Replace(")", "").Split(" (");
+                        List<int> stateList = new List<int>();
+
+                        for (int e = 1; e < numberOfServers; e++)
                         {
-                            Console.WriteLine(proc);
+                            string[] state = proc[e].Split(',');
+                            if (state[2] == "NS")
+                                stateList.Add(1);
+                            else if (state[2] == "S")
+                                stateList.Add(0);
                         }
+
+                        status.Add(Int32.Parse(config[1]), stateList);
                         break;
                     case "_": //Discard patter (matches everything)
                         break;
