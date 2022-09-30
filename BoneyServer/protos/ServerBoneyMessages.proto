@@ -3,6 +3,8 @@
 
 service BoneyServerCommunications {
 	rpc CompareAndSwap(CompareAndSwapRequest) returns (CompareAndSwapReply);
+	//rpc Prepare(ConsensusProposeRequest) returns (ConsensusProposeReply); NOT NEEDED MAYBE
+	//rpc Accept(ConsensusAcceptRequest) returns (ConsensusAcceptReply);
 }
 
 message CompareAndSwapRequest{
@@ -12,4 +14,22 @@ message CompareAndSwapRequest{
 
 message CompareAndSwapReply{
 	int32 outvalue = 1;
+}
+
+message ConsensusProposeRequest{
+	int32 leader = 1;
+	int32 sender = 2;
+}
+
+message ConsensusProposeReply{
+	bool ok = 1;
+}
+
+message ConsensusAcceptRequest{
+	int32 leader = 1;
+	int32 sender = 2;
+}
+
+message ConsensusAcceptReply{
+	bool ok = 1;
 }

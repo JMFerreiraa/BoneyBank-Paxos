@@ -1,4 +1,5 @@
 using Grpc.Core;
+using Grpc.Net.Client;
 using System;
 using System.Timers;
 
@@ -108,7 +109,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
     }
 
 
-        internal class Program
+    internal class Program
     {
         int processId = -1;
         string processUrl;
@@ -121,9 +122,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         int numberOfSlots = 0;
         string timeToStart;
-        int slotTime = 0;
+        static int slotTime = 0;
         int numberOfServers = 0;
+        int counter = 0;
         List<int> frozen = new List<int>();
+        System.Timers.Timer aTimer = new System.Timers.Timer(2000);
 
         public void parseConfigFile()
         {
@@ -196,10 +199,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public void startTimer()
         {
-
+            Console.WriteLine("Timer will be started.");
             TimeSpan day = new TimeSpan(24, 00, 00);    // 24 hours in a day.
             TimeSpan now = TimeSpan.Parse(DateTime.Now.ToString("HH:mm"));     // The current time in 24 hour format
-            TimeSpan activationTime = new TimeSpan(16, 31, 30);    // 4 AM
+            TimeSpan activationTime = new TimeSpan(20, 16, 50);    // 4 AM
 
             TimeSpan timeLeftUntilFirstRun = ((day - now) + activationTime);
             if (timeLeftUntilFirstRun.TotalHours > 24)
@@ -208,8 +211,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
             System.Timers.Timer execute = new System.Timers.Timer();
             execute.Interval = timeLeftUntilFirstRun.TotalMilliseconds;
             execute.Elapsed += findLider;    // Event to do your tasks.
+            execute.AutoReset = false;
             execute.Start();
 
+            aTimer = new System.Timers.Timer(5000);
+            aTimer.Elapsed += findLider;
+            aTimer.AutoReset = true;
+            aTimer.Enabled = true;
         }
 
 
@@ -221,26 +229,53 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             int proposed = -1;
 
+            /* is the status list empty?
+            foreach (int key in status.Keys)
+            {
+                Console.WriteLine(key);
+                Console.WriteLine(status[key][0]);
+                foreach (int li in status[key])
+                {
+                    Console.Write(li + " ");
+                }
+            }*/
+            /*
             foreach(int server in serversAddresses.Keys)
             {
-                if (status[currentSlot][server] == 1)
+                foreach(int item in status.Keys)
                 {
-                    proposed = server;
-                    break;
+                    if(item == currentSlot + 1 && status[item][server-1] == 1)
+                    {
+                        proposed = server;
+                        break;
+                    }
                 }
+            }*/
+
+            counter++;
+            Console.WriteLine("I am proposing server " + proposed + " To be the lider!");
+            Console.WriteLine("Leader round number: " + counter);
+            Console.WriteLine(DateTime.Now.ToString("HH:mm:ss"));
+
+            if (aTimer.Enabled)
+            {
+                Console.WriteLine("I WILL START");
+                aTimer.Start();
             }
 
-            //TODO MANDAR MSG, 
 
-            Console.WriteLine("I am proposing server " + proposed + "To be the lider!");
+            foreach (int server in serversAddresses.Keys)
+            {
+                //TODO CHOOSE ONE RANDOM MAYBE
+            }
 
-
-
-            System.Timers.Timer aTimer = new System.Timers.Timer(slotTime);
-            aTimer.Elapsed += findLider;
-            aTimer.AutoReset = false;
-            aTimer.Enabled = true;
-    }
+            GrpcChannel channel;
+            BoneyServerCommunications.BoneyServerCommunicationsClient client;
+            channel = GrpcChannel.ForAddress("http://localhost:6666");
+            client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
+            var reply = client.CompareAndSwap(new CompareAndSwapRequest
+            { Slot = currentSlot, Invalue = proposed });
+        }
 
         static void Main(string[] args)
         {
@@ -259,7 +294,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             p.parseConfigFile();
 
-            Console.WriteLine("Server will be running for " + p.numberOfSlots + " each lasting " + p.slotTime + " seconds...");
+            Console.WriteLine("Server will be running for " + p.numberOfSlots + " each lasting " + slotTime + " seconds...");
 
             p.startTimer();
 
