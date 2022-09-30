@@ -7,8 +7,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
     {
 
         private Dictionary<string, float> accounts = new Dictionary<string, float>();
-        bool frozen = false;
-        int id = -1;
 
 
         public BankService()
@@ -111,6 +109,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         internal class Program
     {
+        int processId = -1;
+        int currentSlot = 0;
 
         private Dictionary<int, string> clientsAddresses = new Dictionary<int, string>();
         private Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
@@ -121,6 +121,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         string timeToStart;
         int slotTime = 0;
         int numberOfServers = 0;
+        List<int> frozen = new List<int>();
 
         public void parseConfigFile()
         {
@@ -165,6 +166,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         for (int e = 1; e < numberOfServers; e++)
                         {
                             string[] state = proc[e].Split(',');
+                            if (Int32.Parse(state[0]) == processId)
+                            {
+                                if (state[1] == "F")
+                                    frozen.Add(0);
+                                if (state[1] == "N")
+                                    frozen.Add(1);
+                            }
                             if (state[2] == "NS")
                                 stateList.Add(1);
                             else if (state[2] == "S")
@@ -189,11 +197,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
             };
             server.Start();
             Console.WriteLine("BankServer listening on port " + Port);
-            Console.WriteLine("Press any key to stop the server...");
+
+            Console.Write("BankServer id: ");
+            p.processId = Int32.Parse(Console.ReadLine());
 
             p.parseConfigFile();
 
-
+            Console.WriteLine("Press any key to stop the server...");
             Console.ReadKey();
         }
     }
