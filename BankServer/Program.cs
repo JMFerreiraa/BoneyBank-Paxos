@@ -112,7 +112,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
     internal class Program
     {
         int processId = -1;
-        string processUrl;
+        string processUrl = "";
         int currentSlot = 0;
 
         private Dictionary<int, string> clientsAddresses = new Dictionary<int, string>();
@@ -197,41 +197,45 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         break;
                 }
             }
-            Console.WriteLine("Initiating Config Parse checker");
-            Console.WriteLine("Clients:");
-            foreach(int c in clientsAddresses.Keys)
-            {
-                Console.WriteLine(c);
-            }
-            Console.WriteLine("Bank Servers:");
-            foreach (int c in serversAddresses.Keys)
-            {
-                Console.WriteLine(c);
-            }
-            Console.WriteLine("Boney Servers:");
-            foreach (int c in boneysAddresses.Keys)
-            {
-                Console.WriteLine(c);
-            }
-            Console.WriteLine("Status:");
-            foreach (int c in status.Keys)
-            {
-                Console.WriteLine("\tStatus of timestamp " + c);
-                foreach (int s in status[c])
+
+            int debug = 0;
+            if(debug == 1) {
+                Console.WriteLine("Initiating Config Parse checker");
+                Console.WriteLine("Clients:");
+                foreach(int c in clientsAddresses.Keys)
                 {
-                    Console.WriteLine(s);
+                    Console.WriteLine(c);
                 }
-            }
-            Console.WriteLine("Debug Section:");
-            foreach (int server in serversAddresses.Keys)
-            {
-                Console.WriteLine("Testing Server " + server);
-                foreach(int element in status[1])
+                Console.WriteLine("Bank Servers:");
+                foreach (int c in serversAddresses.Keys)
                 {
-                    Console.WriteLine(element);
+                    Console.WriteLine(c);
                 }
+                Console.WriteLine("Boney Servers:");
+                foreach (int c in boneysAddresses.Keys)
+                {
+                    Console.WriteLine(c);
+                }
+                Console.WriteLine("Status:");
+                foreach (int c in status.Keys)
+                {
+                    Console.WriteLine("\tStatus of timestamp " + c);
+                    foreach (int s in status[c])
+                    {
+                        Console.WriteLine(s);
+                    }
+                }
+                Console.WriteLine("Debug Section:");
+                foreach (int server in serversAddresses.Keys)
+                {
+                    Console.WriteLine("Testing Server " + server);
+                    foreach(int element in status[1])
+                    {
+                        Console.WriteLine(element);
+                    }
+                }
+                Console.WriteLine("Finalizing Config Parse checker");
             }
-            Console.WriteLine("Finalizing Config Parse checker");
         }
 
         public void startTimer()
@@ -266,17 +270,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             int proposed = -1;
 
-            /* is the status list empty?
-            foreach (int key in status.Keys)
-            {
-                Console.WriteLine(key);
-                Console.WriteLine(status[key][0]);
-                foreach (int li in status[key])
-                {
-                    Console.Write(li + " ");
-                }
-            }*/
-            
             foreach(int server in serversAddresses.Keys)
             {
                 if (status[currentSlot + 1].ElementAt(server - 1) == 1)
@@ -287,7 +280,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
 
             counter++;
-            Console.WriteLine("I am proposing server " + proposed + " To be the lider!");
             Console.WriteLine("Leader round number: " + counter);
             Console.WriteLine(DateTime.Now.ToString("HH:mm:ss"));
 
@@ -296,12 +288,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 Console.WriteLine("I WILL START");
                 aTimer.Start();
             }
+            Random random = new Random();
+            int randomNumber1 = random.Next(boneysAddresses.Keys.ElementAt(0), boneysAddresses.Keys.ElementAt(0) + boneysAddresses.Count());
 
-
-            foreach (int server in serversAddresses.Keys)
-            {
-                //TODO CHOOSE ONE RANDOM MAYBE
-            }
+            Console.WriteLine("I am proposing server " + proposed + " To be the lider! Sending to boney N " + randomNumber1);
 
             GrpcChannel channel;
             BoneyServerCommunications.BoneyServerCommunicationsClient client;
@@ -328,7 +318,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             p.parseConfigFile();
 
-            Console.WriteLine("Server will be running for " + p.numberOfSlots + " each lasting " + slotTime + " seconds...");
+            Console.WriteLine("Server will be running for " + p.numberOfSlots + " slots, each lasting " + slotTime + " seconds...");
 
             p.startTimer();
 
