@@ -170,12 +170,12 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         slotTime = Int32.Parse(config[1]);
                         break;
                     case "F":
-                        string[] proc = line.Replace(")", "").Split(" (");
+                        string[] proc = line.Replace(")", "").Replace(" ", "").Split("(");
                         List<int> stateList = new List<int>();
 
-                        for (int e = 1; e < numberOfServers; e++)
+                        for (int e = 1; e <= numberOfServers; e++)
                         {
-                            string[] state = proc[e].Split(',');
+                            string[] state = proc[e].Split(",");
                             if (Int32.Parse(state[0]) == processId)
                             {
                                 if (state[1] == "F")
@@ -183,10 +183,12 @@ namespace BankServer // Note: actual namespace depends on the project name.
                                 if (state[1] == "N")
                                     frozen.Add(1);
                             }
-                            if (state[2] == "NS")
+                            if (state[2] == "NS") {
                                 stateList.Add(1);
-                            else if (state[2] == "S")
+                            }
+                            else if (state[2] == "S") { 
                                 stateList.Add(0);
+                            }
                         }
 
                         status.Add(Int32.Parse(config[1]), stateList);
@@ -195,6 +197,41 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         break;
                 }
             }
+            Console.WriteLine("Initiating Config Parse checker");
+            Console.WriteLine("Clients:");
+            foreach(int c in clientsAddresses.Keys)
+            {
+                Console.WriteLine(c);
+            }
+            Console.WriteLine("Bank Servers:");
+            foreach (int c in serversAddresses.Keys)
+            {
+                Console.WriteLine(c);
+            }
+            Console.WriteLine("Boney Servers:");
+            foreach (int c in boneysAddresses.Keys)
+            {
+                Console.WriteLine(c);
+            }
+            Console.WriteLine("Status:");
+            foreach (int c in status.Keys)
+            {
+                Console.WriteLine("\tStatus of timestamp " + c);
+                foreach (int s in status[c])
+                {
+                    Console.WriteLine(s);
+                }
+            }
+            Console.WriteLine("Debug Section:");
+            foreach (int server in serversAddresses.Keys)
+            {
+                Console.WriteLine("Testing Server " + server);
+                foreach(int element in status[1])
+                {
+                    Console.WriteLine(element);
+                }
+            }
+            Console.WriteLine("Finalizing Config Parse checker");
         }
 
         public void startTimer()
@@ -239,18 +276,15 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     Console.Write(li + " ");
                 }
             }*/
-            /*
+            
             foreach(int server in serversAddresses.Keys)
             {
-                foreach(int item in status.Keys)
+                if (status[currentSlot + 1].ElementAt(server - 1) == 1)
                 {
-                    if(item == currentSlot + 1 && status[item][server-1] == 1)
-                    {
-                        proposed = server;
-                        break;
-                    }
+                    proposed = server;
+                    break;
                 }
-            }*/
+            }
 
             counter++;
             Console.WriteLine("I am proposing server " + proposed + " To be the lider!");
