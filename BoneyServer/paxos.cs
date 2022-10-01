@@ -6,18 +6,44 @@ using System.Threading.Tasks;
 
 namespace BoneyServer
 {
-    public class proposer
+    public class Proposer
     {
+        internal List<int> proposedValues = new List<int>();
 
+        public Proposer()
+        {
+            
+        }
+
+        public int processProposal()
+        {
+            return -1;
+        }
+
+        internal void addProposedValue(int value)
+        {
+            proposedValues.Add(value);
+        }
+
+        internal List<int> getProposedValues()
+        {
+            return proposedValues;
+        }
     }
 
-    public class acceptor
+    public class Acceptor
     {
-
+        public Acceptor()
+        {
+            
+        }
     }
 
-    public class learner
+    public class Learner
     {
-
+        public Learner()
+        {
+            
+        }
     }
 }

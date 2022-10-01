@@ -1,4 +1,5 @@
-﻿using Grpc.Core;
+﻿using BoneyServer;
+using Grpc.Core;
 using System;
 using static boneyServer.Program;
 
@@ -6,9 +7,13 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 {
     internal class Program
     {
+        internal List<int> liderHistory = new List<int>();
         private int id;
         private string host;
         private int port;
+        internal Proposer proposer = new Proposer();
+        internal Acceptor acceptor = new Acceptor();
+        internal Learner learn = new Learner();
 
         public string Host
         {
@@ -88,10 +93,22 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public CompareAndSwapReply CAS(CompareAndSwapRequest request)
         {
+            int outv_tmp;
             lock (this)
             {
                 // DOING STUFF
                 Console.WriteLine("HELLO HAVE SOME STUFF: {0}, {1}.", request.Slot, request.Invalue);
+
+                if (p.liderHistory.Count >= request.Slot) //Lider já foi foi consensed! Então retornar só oq está na history
+                {
+                    outv_tmp = p.liderHistory.ElementAt(request.Slot);
+                }
+                else
+                {
+                    p.proposer.proposedValues.Add(request.Invalue);
+                }
+                
+
             }
             return new CompareAndSwapReply
             {
@@ -110,19 +127,19 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             p = program;
         }
 
-        public override Task<ConsensusProposeReply> Propose(
-            ConsensusProposeRequest request, ServerCallContext context)
+        public override Task<ConsensusPromisse> Prepare(
+            ConsensusPrepare request, ServerCallContext context)
         {
             return Task.FromResult(Pr(request));
         }
 
-        public ConsensusProposeReply Pr(ConsensusProposeRequest request)
+        public ConsensusPromisse Pr(ConsensusPrepare request)
         {
             lock (this)
             {
                 // DOING STUFF
             }
-            return new ConsensusProposeReply
+            return new ConsensusPromisse
             {
                 // FILL 
             };
