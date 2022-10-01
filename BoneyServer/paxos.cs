@@ -12,11 +12,12 @@ namespace BoneyServer
 
         public Proposer()
         {
-            
+
         }
 
-        public int processProposal()
+        public int processProposal(int prop)
         {
+            proposedValues.Add(prop);
             return -1;
         }
 
@@ -35,7 +36,23 @@ namespace BoneyServer
     {
         public Acceptor()
         {
-            
+
+        }
+
+        public void recievedPrepare()
+        {
+            /*
+            foreach (acceptor in list) //TODO
+            {
+                if (true /* Acceptor not null */ /*)
+                {
+                    GrpcChannel channel;
+                    BoneyBoneyCommunications.BoneyBoneyCommunicationsClient client;
+                    channel = GrpcChannel.ForAddress("http://localhost:6666"); // URL da lista
+                    client = new BoneyBoneyCommunications.BoneyBoneyCommunicationsClient(channel);
+                    var reply = client.Prepare(new ConsensusPrepare
+                    }
+            }*/
         }
     }
 
