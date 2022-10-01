@@ -8,51 +8,60 @@ namespace BoneyServer
 {
     public class Proposer
     {
-        internal List<int> proposedValues = new List<int>();
+        private int proposerId = 1;
 
         public Proposer()
         {
 
         }
 
-        public int processProposal(int prop)
+        public int processProposal(int prop, List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeServers)
         {
-            proposedValues.Add(prop);
+            foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in activeServers)
+            {
+                var response = server.Prepare(new ConsensusPrepare{Leader = proposerId });
+            }
             return -1;
-        }
-
-        internal void addProposedValue(int value)
-        {
-            proposedValues.Add(value);
-        }
-
-        internal List<int> getProposedValues()
-        {
-            return proposedValues;
         }
     }
 
     public class Acceptor
     {
+        // -1 = null value;
+        private int value = -1;
+        private int biggest_lider_seen = -1;
+        private int lider_that_wrote = -1;
+
         public Acceptor()
         {
 
         }
 
-        public void recievedPrepare()
+        // what will it send?  < Bool (0,1) if success, int saying biggest seen if bool negative, value>
+        public List<int> recievedProposel(int lider)
         {
-            /*
-            foreach (acceptor in list) //TODO
+            if(value != -1)
             {
-                if (true /* Acceptor not null */ /*)
-                {
-                    GrpcChannel channel;
-                    BoneyBoneyCommunications.BoneyBoneyCommunicationsClient client;
-                    channel = GrpcChannel.ForAddress("http://localhost:6666"); // URL da lista
-                    client = new BoneyBoneyCommunications.BoneyBoneyCommunicationsClient(channel);
-                    var reply = client.Prepare(new ConsensusPrepare
-                    }
-            }*/
+                return returnList(0, biggest_lider_seen, value);
+            }
+            else if(lider < lider_that_wrote || lider < biggest_lider_seen)
+            {
+                return returnList(0, biggest_lider_seen, -1);
+            }
+            else
+            {
+                return returnList(1, biggest_lider_seen, -1);
+            }
+            
+        }
+
+        private List<int> returnList(int x, int y, int z)
+        {
+            List<int> list = new List<int>();
+            list.Add(x);
+            list.Add(y);
+            list.Add(z);
+            return list;
         }
     }
 

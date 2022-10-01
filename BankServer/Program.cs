@@ -113,7 +113,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
     {
         int processId = -1;
         string processUrl = "";
-        int currentSlot = 0;
+        int currentSlot = 1;
 
         private Dictionary<int, string> clientsAddresses = new Dictionary<int, string>();
         private Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
@@ -269,6 +269,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             //TO-DO: O que acontece se estiver frozen e ninguem suspeita q está?
 
             int proposed = -1;
+            
 
             foreach(int server in serversAddresses.Keys)
             {
@@ -295,7 +296,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             GrpcChannel channel;
             BoneyServerCommunications.BoneyServerCommunicationsClient client;
-            channel = GrpcChannel.ForAddress("http://localhost:6666");
+            channel = GrpcChannel.ForAddress("http://localhost:10000");
             client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
             var reply = client.CompareAndSwap(new CompareAndSwapRequest
             { Slot = currentSlot, Invalue = proposed });

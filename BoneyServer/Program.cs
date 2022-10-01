@@ -4,13 +4,13 @@ using System;
 using System.Diagnostics;
 using static boneyServer.BoneyBankService;
 using static boneyServer.Program;
+using Grpc.Net.Client;
 
 namespace boneyServer // Note: actual namespace depends on the project name.
 {
     internal class Program
     {
         internal List<int> liderHistory = new List<int>();
-        private int id;
         private string host;
         private int port;
         internal Proposer proposer = new Proposer();
@@ -20,9 +20,9 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         int processId = -1;
         string processUrl = "";
 
-        private Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
-        private Dictionary<int, string> boneysAddresses = new Dictionary<int, string>();
-        private Dictionary<int, List<int>> status = new Dictionary<int, List<int>>();
+        internal Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient> serversAddresses = new Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient>();
+        internal Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneysAddresses = new Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient>();
+        internal Dictionary<int, List<int>> status = new Dictionary<int, List<int>>();
 
         int numberOfServers = 0;
         int counter = 0;
@@ -41,11 +41,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             set { port = value; }
         }
 
-        public int Id
-        {
-            get { return id; }
-            set { id = value; }
-        }
 
         public void parseConfigFile()
         {
@@ -59,18 +54,30 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 switch (config[0])
                 {
                     case "P":
-
+                        GrpcChannel channel;
+                        
                         switch (config[2])
                         {
                             case "boney":
                                 numberOfServers += 1;
-                                boneysAddresses.Add(Int32.Parse(config[1]), config[3]);
+                                
+                                channel = GrpcChannel.ForAddress(config[3]);
+                                BoneyBoneyCommunications.BoneyBoneyCommunicationsClient bclient;
+                                bclient = new BoneyBoneyCommunications.BoneyBoneyCommunicationsClient(channel);
+                                boneysAddresses.Add(Int32.Parse(config[1]), bclient);
                                 if (Int32.Parse(config[1]) == processId)
+                                {
                                     processUrl = config[3];
+
+                                }
+                                    
                                 break;
                             case "bank":
                                 numberOfServers += 1;
-                                serversAddresses.Add(Int32.Parse(config[1]), config[3]);
+                                channel = GrpcChannel.ForAddress(config[3]);
+                                BoneyServerCommunications.BoneyServerCommunicationsClient sclient;
+                                sclient = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
+                                serversAddresses.Add(Int32.Parse(config[1]), sclient);
                                 if (Int32.Parse(config[1]) == processId)
                                     processUrl = config[3];
                                 break;
@@ -115,6 +122,8 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 }
             }
 
+            port = Int32.Parse(processUrl.Split(":")[2]);
+
             int debug = 0;
             if (debug == 1)
             {
@@ -151,33 +160,14 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             }
         }
 
-        public void parse()
+        public List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> getActiveBoneys()
         {
-            var currentDir = Directory.GetParent(System.IO.Directory.GetCurrentDirectory()).Parent.Parent.Parent + "\\ConfigurationFile.txt";
-
-            string[] lines = System.IO.File.ReadAllLines(currentDir);
-            foreach (string line in lines)
-            {
-                string[] words = line.Split(" ");
-                if (words.Length == 4 && words[0] == "P" && words[2] == "boney" && Int32.Parse(words[1]) == id)
-                {
-                    port = Int32.Parse(words[3].Split(":")[2]);
-                    host = "http://" + words[3].Split("//")[1].Split(":")[0];
-                }
-            }
-            Console.WriteLine(port);
-            Console.WriteLine(host);
-        }
-
-        public List<string> getActiveBoneys()
-        {
-            List<string> activeBoneys = new List<string>();
-
-            foreach (int boney in serversAddresses.Keys)
+            List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeBoneys = new List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient>();
+            foreach (int boney in boneysAddresses.Keys)
             {
                 if (status[liderHistory.Count + 1][boney - 1] == 1)
                 {
-                    activeBoneys.Add(serversAddresses[boney]);
+                    activeBoneys.Add(boneysAddresses[boney]);
                 }
             }
             return activeBoneys;
@@ -185,21 +175,18 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         static void Main(string[] args)
         {
-            int Port = 6666;
             Program p = new Program();
-            p.id = 1;
-            p.parse();
+            Console.Write("Boney ID: ");
+            p.processId = Int32.Parse(Console.ReadLine());
             p.parseConfigFile();
+            Console.WriteLine("Press any key to stop the server...");
             Server server = new Server
             {
                 Services = { BoneyServerCommunications.BindService(new BoneyBankService(p)),
-                             BoneyBoneyCommunications.BindService(new BoneyBoneyService(p))},
-                Ports = { new ServerPort("localhost", Port, ServerCredentials.Insecure) }
+                    BoneyBoneyCommunications.BindService(new BoneyBoneyService(p))},
+                Ports = { new ServerPort("localhost", p.Port, ServerCredentials.Insecure) }
             };
             server.Start();
-            Console.WriteLine("BoneyServer listening on port " + p.Port);
-            Console.WriteLine("Press any key to stop the server...");
-            Console.WriteLine(p.getActiveBoneys());
             Console.ReadKey();
             server.ShutdownAsync();
          }
@@ -234,14 +221,13 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 // DOING STUFF
                 Console.WriteLine("HELLO HAVE SOME STUFF: {0}, {1}.", request.Slot, request.Invalue);
 
-                if (p.liderHistory.Count >=
-                    request.Slot) //Lider já foi foi consensed! Então retornar só oq está na history
+                if (p.liderHistory.Count >= request.Slot) //Lider já foi foi consensed! Então retornar só oq está na history
                 {
                     outv_tmp = p.liderHistory.ElementAt(request.Slot);
                 }
                 else
                 {
-                    outv_tmp = p.proposer.processProposal(request.Invalue);
+                    outv_tmp = p.proposer.processProposal(request.Invalue, p.getActiveBoneys());
                 }
 
                 return new CompareAndSwapReply
@@ -268,14 +254,17 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         }
 
         public ConsensusPromisse Pr(ConsensusPrepare request)
+            // sends promisse
         {
+            List<int> reply;
             lock (this)
             {
-                //n  CALL function( Request)
+                reply = p.acceptor.recievedProposel(request.Leader);
             }
             return new ConsensusPromisse
             {
-                // FILL 
+                PrevAcceptedLider = reply[1],
+                PrevAcceptedValue = reply[2]
             };
         }
 
