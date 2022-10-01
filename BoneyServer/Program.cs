@@ -52,10 +52,10 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             Program p = new Program();
             p.id = 1;
             p.parse();
-
             Server server = new Server
             {
-                Services = { BoneyServerCommunications.BindService(new BoneyService(p)) },
+                Services = { BoneyServerCommunications.BindService(new BoneyBankService(p)),
+                             BoneyBoneyCommunications.BindService(new BoneyBoneyService(p))},
                 Ports = { new ServerPort("localhost", Port, ServerCredentials.Insecure) }
             };
             server.Start();
@@ -66,7 +66,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
          }
     }
 
-    internal class BoneyService : BoneyServerCommunications.BoneyServerCommunicationsBase
+    internal class BoneyBankService : BoneyServerCommunications.BoneyServerCommunicationsBase
     {
         // TO-DO: Communication between processes of the boney service(PAXOS)
         // 1. Receive request
@@ -75,7 +75,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         // First Boney to receive a request must communicate the value to the others. If 2 boneys receive requests at the same time,
         // the boney with the lowest id has the priority. Boneys sometimes can freeze and change the order of priority.
         Program p;
-        public BoneyService(Program program)
+        public BoneyBankService(Program program)
         {
             p = program;
         }
@@ -96,6 +96,53 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             return new CompareAndSwapReply
             {
                 Outvalue = 1
+            };
+        }
+
+    }
+
+    internal class BoneyBoneyService : BoneyBoneyCommunications.BoneyBoneyCommunicationsBase
+    {
+
+        Program p;
+        public BoneyBoneyService(Program program)
+        {
+            p = program;
+        }
+
+        public override Task<ConsensusProposeReply> Propose(
+            ConsensusProposeRequest request, ServerCallContext context)
+        {
+            return Task.FromResult(Pr(request));
+        }
+
+        public ConsensusProposeReply Pr(ConsensusProposeRequest request)
+        {
+            lock (this)
+            {
+                // DOING STUFF
+            }
+            return new ConsensusProposeReply
+            {
+                // FILL 
+            };
+        }
+
+        public override Task<ConsensusAcceptReply> Accept(
+            ConsensusAcceptRequest request, ServerCallContext context)
+        {
+            return Task.FromResult(Acc(request));
+        }
+
+        public ConsensusAcceptReply Acc(ConsensusAcceptRequest request)
+        {
+            lock (this)
+            {
+                // DOING STUFF
+            }
+            return new ConsensusAcceptReply
+            {
+                // FILL 
             };
         }
 

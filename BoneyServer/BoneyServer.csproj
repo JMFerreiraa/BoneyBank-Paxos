@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="protos\BoneyBoneyMessages.proto" />
     <None Remove="protos\ServerBoneyMessages.proto" />
   </ItemGroup>
 
@@ -18,6 +19,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+	<Protobuf Include="protos\BoneyBoneyMessages.proto" GrpcServices="Both" />
 	  <Protobuf Include="protos\ServerBoneyMessages.proto" GrpcServices="Both" />
   </ItemGroup>
 </Project>
