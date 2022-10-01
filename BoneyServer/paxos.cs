@@ -8,11 +8,11 @@ namespace BoneyServer
 {
     public class Proposer
     {
-        private int proposerId = 1;
+        private int proposerId;
 
-        public Proposer()
+        public Proposer(int id)
         {
-
+            proposerId = id;
         }
 
         public int processProposal(int prop, List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeServers)

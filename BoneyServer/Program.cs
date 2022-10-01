@@ -13,7 +13,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         internal List<int> liderHistory = new List<int>();
         private string host;
         private int port;
-        internal Proposer proposer = new Proposer();
+        internal Proposer proposer;
         internal Acceptor acceptor = new Acceptor();
         internal Learner learn = new Learner();
 
@@ -178,6 +178,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             Program p = new Program();
             Console.Write("Boney ID: ");
             p.processId = Int32.Parse(Console.ReadLine());
+            p.proposer = new Proposer(p.processId);
             p.parseConfigFile();
             Console.WriteLine("Press any key to stop the server...");
             Server server = new Server
