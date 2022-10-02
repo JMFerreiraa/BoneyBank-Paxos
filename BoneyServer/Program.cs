@@ -15,7 +15,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         private int port;
         internal Proposer proposer;
         internal Acceptor acceptor = new Acceptor();
-        internal Learner learn = new Learner();
+        internal Learner learn;
 
         int processId = -1;
         string processUrl = "";
@@ -180,6 +180,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             p.processId = Int32.Parse(Console.ReadLine());
             p.proposer = new Proposer(p.processId);
             p.parseConfigFile();
+            p.learn = new Learner(p.boneysAddresses.Count);
             Console.WriteLine("Write exit to quit");
             Server server = new Server
             {
@@ -282,11 +283,31 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public ConsensusAcceptReply Acc(ConsensusAcceptRequest request)
         {
+            List<int> reply;
+            lock (this)
+            {
+                reply = p.acceptor.receivedAccept(request.Value, request.Leader, p.getActiveBoneys());
+            }
+            return new ConsensusAcceptReply
+            {
+                Leader = reply[1],
+                Value = reply[2]
+            };
+        }
+
+        public override Task<LearnersReply> Learner(
+            LearnersRequest request, ServerCallContext context)
+        {
+            return Task.FromResult(Lea(request));
+        }
+
+        public LearnersReply Lea(LearnersRequest request)
+        {
             lock (this)
             {
                 // DOING STUFF
             }
-            return new ConsensusAcceptReply
+            return new LearnersReply
             {
                 // FILL 
             };

@@ -61,7 +61,8 @@ namespace BoneyServer
             return list;
         }
 
-        public List<int> receivedAccept(int value_to_accept, int lider)
+        public List<int> receivedAccept(int value_to_accept, int lider, 
+            List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeServers)
         {
             Console.WriteLine("Received accept!");
          
@@ -73,22 +74,78 @@ namespace BoneyServer
             {
                 value = value_to_accept;
                 biggest_lider_seen = lider;
+                sendToLearners(activeServers, lider, value);
                 return returnList(biggest_lider_seen, value);
             }
 
         }
 
-        public void sendToLearners()
+        public void sendToLearners(List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeServers,
+            int leader, int value_send)
         {
-            //Pass
+            foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in activeServers)
+            {
+                var response = server.Learner(new LearnersRequest {Leader = leader, Value = value_send });
+            }
+            return;
         }
     }
 
     public class Learner
     {
-        public Learner()
+        private int acceptor_Number;
+        private List<int> values_received = new List<int>();
+        private int number_of_servers;
+        public Learner(int size)
         {
-            
+            number_of_servers = size;
+            for(int i = 0; i < size; i++)
+            {
+                values_received.Add(-1);
+            }
+        }
+
+        public void receivedLearner(int value_sent, int leader, 
+            Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneysAddresses)
+        {
+            // Leader - 3(n servers, we get their id)
+            int discard = leader;
+            while(discard > 0)
+            {
+                if (boneysAddresses.ContainsKey(discard))
+                {
+                    break;
+                }
+                else
+                {
+                    discard -= boneysAddresses.Count;
+                }
+            }
+            values_received[discard] = value_sent;
+
+            foreach(int e in values_received)
+            {
+                int count = 0;
+                foreach(int i in values_received)
+                {
+                    if(i == e)
+                    {
+                        count++;
+                    }
+                }
+                if(count >= number_of_servers/2)
+                {
+                    send_msg_to_server();
+                    break;
+                }
+                count = 0;
+            }
+
+        }
+
+        public void send_msg_to_server()
+        {
+            //send to client that requested all the awnsers / or all;
         }
     }
 }
