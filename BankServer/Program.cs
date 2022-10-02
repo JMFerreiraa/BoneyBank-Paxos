@@ -323,8 +323,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             p.startTimer();
 
-            Console.WriteLine("Press any key to stop the server...");
-            Console.ReadKey();
+            Console.WriteLine("Write exit to quit!");
+            while (true)
+            {
+                string command = Console.ReadLine();
+                if (command == "exit")
+                    break;
+            }
             server.ShutdownAsync();
         }
     }

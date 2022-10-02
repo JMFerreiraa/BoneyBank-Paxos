@@ -180,7 +180,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             p.processId = Int32.Parse(Console.ReadLine());
             p.proposer = new Proposer(p.processId);
             p.parseConfigFile();
-            Console.WriteLine("Press any key to stop the server...");
+            Console.WriteLine("Write exit to quit");
             Server server = new Server
             {
                 Services = { BoneyServerCommunications.BindService(new BoneyBankService(p)),
@@ -188,7 +188,12 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 Ports = { new ServerPort("localhost", p.Port, ServerCredentials.Insecure) }
             };
             server.Start();
-            Console.ReadKey();
+            while (true)
+            {
+                string command = Console.ReadLine();
+                if (command == "exit")
+                    break;
+            }
             server.ShutdownAsync();
          }
     }
