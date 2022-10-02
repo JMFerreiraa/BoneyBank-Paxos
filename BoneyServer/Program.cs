@@ -265,12 +265,13 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             List<int> reply;
             lock (this)
             {
+
                 reply = p.acceptor.recievedProposel(request.Leader);
             }
             return new ConsensusPromisse
             {
-                PrevAcceptedLider = reply[1],
-                PrevAcceptedValue = reply[2]
+                PrevAcceptedLider = reply[0],
+                PrevAcceptedValue = reply[1]
             };
         }
 

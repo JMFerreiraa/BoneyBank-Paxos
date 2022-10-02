@@ -18,13 +18,26 @@ namespace BoneyServer
         public int processProposal(int prop, List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeServers)
         {
             //TO-DO: é preciso enviar os N prepares para todos os acceptor ao mesmo tempo?
-            //criar lista para guardar todas a responses
+            List<int> lidersSeen = new List<int>();
+            List<int> propValues = new List<int>();
             //Iterar sobre as responses e se alguma tiver já valores retornar esse valor.
             //caso contrario, retorna -1
             foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in activeServers)
             {
-                var response = server.Prepare(new ConsensusPrepare{Leader = proposerId });
-
+                Console.WriteLine("Sending to server!");
+                ConsensusPromisse response;
+                try
+                {
+                    response = server.Prepare(new ConsensusPrepare { Leader = proposerId });
+                    Console.WriteLine("We got a ConsensusPromisse");
+                    lidersSeen.Add(response.PrevAcceptedLider);
+                    propValues.Add(response.PrevAcceptedValue);
+                }
+                catch
+                {
+                    Console.WriteLine("Could not contact the server! ");
+                }
+                
             }
             return -1;
         }
@@ -45,7 +58,6 @@ namespace BoneyServer
         // what will it send?  < Bool (0,1) if success, int saying biggest seen if bool negative, value>
         public List<int> recievedProposel(int lider)
         {
-            Console.WriteLine("Received proposal!");
             if(!(lider < lider_that_wrote || lider < biggest_lider_seen))
             {
                 biggest_lider_seen = lider;                
