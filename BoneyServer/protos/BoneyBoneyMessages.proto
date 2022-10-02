@@ -4,6 +4,7 @@
 service BoneyBoneyCommunications {
 	rpc Prepare(ConsensusPrepare) returns (ConsensusPromisse);
 	rpc Accept(ConsensusAcceptRequest) returns (ConsensusAcceptReply);
+	rpc Learner(LearnersRequest) returns(LearnersReply);
 }
 
 message ConsensusPrepare{
@@ -21,11 +22,13 @@ message ConsensusAcceptRequest{
 }
 
 message ConsensusAcceptReply{
-	int32 value = 1;
+	int32 leader = 1;
+	int32 value = 2;
 }
 
 message LearnersRequest{
-	int32 value = 1;
+	int32 leader = 1;
+	int32 value = 2;
 }
 
 message LearnersReply{
