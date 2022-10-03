@@ -117,7 +117,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
                         status.Add(Int32.Parse(config[1]), stateList);
                         break;
-                    case "_": //Discard patter (matches everything)
+                    default: //Discard patter (matches everything)
                         break;
                 }
             }
@@ -175,9 +175,13 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         static void Main(string[] args)
         {
+            if (args.Length != 1)
+            {
+                Console.WriteLine("Please give Boney ID as argument!");
+                Environment.Exit(1);
+            }
             Program p = new Program();
-            Console.Write("Boney ID: ");
-            p.processId = Int32.Parse(Console.ReadLine());
+            p.processId = Int32.Parse(args[0]);
             p.proposer = new Proposer(p.processId);
             p.parseConfigFile();
             p.learn = new Learner(p.boneysAddresses.Count);
@@ -223,18 +227,18 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         public CompareAndSwapReply CAS(CompareAndSwapRequest request)
         {
             int outv_tmp;
+            Console.WriteLine("I got a request with value " + request.Invalue + "for slot " + request.Slot + " lets get consensus!");
             lock (this)
             {
-                // DOING STUFF
-                Console.WriteLine("HELLO HAVE SOME STUFF: {0}, {1}.", request.Slot, request.Invalue);
-
                 if (p.liderHistory.Count >= request.Slot) //Lider já foi foi consensed! Então retornar só oq está na history
                 {
                     outv_tmp = p.liderHistory.ElementAt(request.Slot);
+                    Console.WriteLine("This slot was already consensed in the past! We got value " + outv_tmp);
                 }
                 else
                 {
                     outv_tmp = p.proposer.processProposal(request.Invalue, p.getActiveBoneys());
+                    Console.WriteLine("I made consensus and the value consented is " + outv_tmp);
                 }
 
                 return new CompareAndSwapReply
@@ -261,8 +265,8 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         }
 
         public ConsensusPromisse Pr(ConsensusPrepare request)
-            // sends promisse
         {
+            Console.WriteLine("I got a prepare from " + request.Leader + "!");
             List<int> reply;
             lock (this)
             {

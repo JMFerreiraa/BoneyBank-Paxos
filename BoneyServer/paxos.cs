@@ -37,7 +37,6 @@ namespace BoneyServer
                 {
                     Console.WriteLine("Could not contact the server! ");
                 }
-                
             }
             return -1;
         }

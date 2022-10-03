@@ -304,8 +304,14 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         static void Main(string[] args)
         {
+            if (args.Length != 1)
+            {
+                Console.WriteLine("Please give Bank ID as argument!");
+                Environment.Exit(1);
+            }
             const int Port = 1001;
             Program p = new Program();
+            p.processId = Int32.Parse(args[0]);
             Server server = new Server
             {
                 Services = { BankClientCommunications.BindService(new BankService()) },
@@ -314,9 +320,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             server.Start();
             Console.WriteLine("BankServer listening on port " + Port);
 
-            Console.Write("BankServer id: ");
-            p.processId = Int32.Parse(Console.ReadLine());
-
+            
             p.parseConfigFile();
 
             Console.WriteLine("Server will be running for " + p.numberOfSlots + " slots, each lasting " + slotTime + " seconds...");
