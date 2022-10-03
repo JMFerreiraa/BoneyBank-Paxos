@@ -9,12 +9,13 @@ namespace BoneyServer
     public class Proposer
     {
         private int proposerId;
+        private int amountOfNodes;
 
-        public Proposer(int id)
+        public Proposer(int id, int amountOfNodes)
         {
             proposerId = id;
+            this.amountOfNodes = amountOfNodes;
         }
-
         public int processProposal(int prop, List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeServers)
         {
             //TO-DO: é preciso enviar os N prepares para todos os acceptor ao mesmo tempo?
@@ -24,7 +25,7 @@ namespace BoneyServer
             //caso contrario, retorna -1
             foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in activeServers)
             {
-                Console.WriteLine("Sending to server!");
+                Console.WriteLine("Sending Promisse to server! ");
                 ConsensusPromisse response;
                 try
                 {
@@ -38,7 +39,26 @@ namespace BoneyServer
                     Console.WriteLine("Could not contact the server! ");
                 }
             }
-            return -1;
+
+            int biggestLider = prop;
+            int biggestAccepted = -1;
+            int idx = 0;
+            //check if any other lider with bigger ID is working
+            foreach (int lider in lidersSeen)
+            {
+                if (lider > biggestLider)
+                {
+                    biggestAccepted = propValues[idx];
+                    biggestLider = lider;
+                }
+                idx++;
+            }
+
+            if (biggestLider != prop)
+            {
+                this.proposerId += this.amountOfNodes;
+            }
+            return biggestAccepted;
         }
     }
 

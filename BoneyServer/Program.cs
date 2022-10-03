@@ -182,7 +182,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             }
             Program p = new Program();
             p.processId = Int32.Parse(args[0]);
-            p.proposer = new Proposer(p.processId);
+            p.proposer = new Proposer(p.processId, p.boneysAddresses.Count);
             p.parseConfigFile();
             p.learn = new Learner(p.boneysAddresses.Count);
             Console.WriteLine("Write exit to quit");
