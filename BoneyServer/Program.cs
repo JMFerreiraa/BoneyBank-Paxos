@@ -239,6 +239,10 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 {
                     outv_tmp = p.proposer.processProposal(request.Invalue, p.getActiveBoneys());
                     Console.WriteLine("I made consensus and the value consented is " + outv_tmp);
+
+                    // JOAOOOOOOOOOOOOOOOO LE ME
+                    // TODO should we send the consensos response now? shouldnt we wait for the learners to send msgs so they can get majority?
+                    // ta no paxos dps fala comigo
                 }
 
                 return new CompareAndSwapReply
@@ -310,11 +314,11 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         {
             lock (this)
             {
-                // DOING STUFF
+                p.learn.receivedLearner(request.Value, request.Leader, p.boneysAddresses, p.serversAddresses);
             }
             return new LearnersReply
             {
-                // FILL 
+                Value = 0 
             };
         }
 

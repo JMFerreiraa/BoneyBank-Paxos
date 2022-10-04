@@ -77,6 +77,7 @@ namespace BoneyServer
         // what will it send?  < Bool (0,1) if success, int saying biggest seen if bool negative, value>
         public List<int> recievedProposel(int lider)
         {
+            Console.WriteLine("Acceptor recieved a proposel.");
             if(!(lider < lider_that_wrote || lider < biggest_lider_seen))
             {
                 biggest_lider_seen = lider;                
@@ -114,6 +115,7 @@ namespace BoneyServer
         public void sendToLearners(List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeServers,
             int leader, int value_send)
         {
+            Console.WriteLine("Sending to learners.");
             foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in activeServers)
             {
                 var response = server.Learner(new LearnersRequest {Leader = leader, Value = value_send });
@@ -137,10 +139,15 @@ namespace BoneyServer
         }
 
         public void receivedLearner(int value_sent, int leader, 
-            Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneysAddresses)
+            Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneysAddresses,
+            Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient> serversAddresses
+            /*, server address para mandar msg para o client */)
         {
             // Leader - 3(n servers, we get their id)
             int discard = leader;
+
+            Console.WriteLine("Welcome to the gulag, learners only may survive!");
+
             while(discard > 0)
             {
                 if (boneysAddresses.ContainsKey(discard))
@@ -166,7 +173,7 @@ namespace BoneyServer
                 }
                 if(count >= number_of_servers/2)
                 {
-                    send_msg_to_server();
+                    send_msg_to_server(serversAddresses, e);
                     break;
                 }
                 count = 0;
@@ -174,9 +181,15 @@ namespace BoneyServer
 
         }
 
-        public void send_msg_to_server()
+        public void send_msg_to_server(Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient> serversAddresses,
+            int consensus)
         {
-            //send to client that requested all the awnsers / or all;
+            foreach (BoneyServerCommunications.BoneyServerCommunicationsClient server in serversAddresses.Values)
+            {
+                var response = server.Consensus(new ConsensusInLearnerRequest { Value = consensus});
+            }
+            return;
+
         }
     }
 }

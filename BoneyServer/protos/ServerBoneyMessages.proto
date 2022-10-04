@@ -3,6 +3,7 @@
 
 service BoneyServerCommunications {
 	rpc CompareAndSwap(CompareAndSwapRequest) returns (CompareAndSwapReply);
+	rpc Consensus(ConsensusInLearnerRequest) returns (ConsensusInLearnerReply);
 }
 
 message CompareAndSwapRequest{
@@ -12,4 +13,12 @@ message CompareAndSwapRequest{
 
 message CompareAndSwapReply{
 	int32 outvalue = 1;
+}
+
+message ConsensusInLearnerRequest{
+	int32 value = 1;
+}
+
+message ConsensusInLearnerReply{
+	bool ok = 1;
 }
