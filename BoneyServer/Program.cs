@@ -19,15 +19,20 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         int processId = -1;
         string processUrl = "";
+        int currentSlot = 1;
 
         internal Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient> serversAddresses = new Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient>();
         internal Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneysAddresses = new Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient>();
         internal Dictionary<int, List<int>> status = new Dictionary<int, List<int>>();
 
+        int numberOfSlots = 0;
+        string timeToStart;
+        static int slotTime = 0;
         int numberOfServers = 0;
         int counter = 0;
         List<int> frozen = new List<int>();
         System.Timers.Timer aTimer = new System.Timers.Timer(2000);
+        internal int timeSlot;
 
         public string Host
         {
@@ -86,10 +91,13 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                         }
                         break;
                     case "S":
+                        numberOfSlots = Int32.Parse(config[1]);
                         break;
                     case "T":
+                        timeToStart = config[1];
                         break;
                     case "D":
+                        slotTime = Int32.Parse(config[1]);
                         break;
                     case "F":
                         string[] proc = line.Replace(")", "").Replace(" ", "").Split("(");
@@ -182,7 +190,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             }
             Program p = new Program();
             p.processId = Int32.Parse(args[0]);
-            p.proposer = new Proposer(p.processId, p.boneysAddresses.Count);
+            p.proposer = new Proposer(p.processId, p.boneysAddresses);
             p.parseConfigFile();
             p.learn = new Learner(p.boneysAddresses.Count);
             Console.WriteLine("Write exit to quit");
@@ -237,12 +245,9 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 }
                 else
                 {
-                    outv_tmp = p.proposer.processProposal(request.Invalue, p.getActiveBoneys());
+                    outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot - 1]);
                     Console.WriteLine("I made consensus and the value consented is " + outv_tmp);
 
-                    // JOAOOOOOOOOOOOOOOOO LE ME
-                    // TODO should we send the consensos response now? shouldnt we wait for the learners to send msgs so they can get majority?
-                    // ta no paxos dps fala comigo
                 }
 
                 return new CompareAndSwapReply

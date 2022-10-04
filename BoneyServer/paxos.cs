@@ -10,20 +10,47 @@ namespace BoneyServer
     {
         private int proposerId;
         private int amountOfNodes;
+        private Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses;
+        Dictionary<int, List<int>> status;
+        private Dictionary<int, int> allProposerIds;
 
-        public Proposer(int id, int amountOfNodes)
+
+        public Proposer(int id, Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses)
         {
             proposerId = id;
-            this.amountOfNodes = amountOfNodes;
+            this.amountOfNodes = boneyAddresses.Count;
+
+            foreach (int boneyID in boneyAddresses.Keys)
+            {
+                allProposerIds.Add(boneyID, boneyID);   
+            }
         }
-        public int processProposal(int prop, List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeServers)
+
+        public int processProposal(int prop, Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses, List<int> status)
         {
-            //TO-DO: é preciso enviar os N prepares para todos os acceptor ao mesmo tempo?
             List<int> lidersSeen = new List<int>();
             List<int> propValues = new List<int>();
-            //Iterar sobre as responses e se alguma tiver já valores retornar esse valor.
-            //caso contrario, retorna -1
-            foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in activeServers)
+            this.boneyAddresses = boneyAddresses;
+            //TO-DO: Verificar aqui se há algum servidor com ID mais baixo que esteja ligado
+
+            //Iterar todos os servidores até chegar a mim
+            int minIdx = this.proposerId;
+            int minID = allProposerIds[this.proposerId];
+            //Qual o id mais baixo?
+            foreach (int boneyID in allProposerIds.Keys)
+            {
+                if (allProposerIds[boneyID] < minID)
+                {
+                    minIdx = boneyID;
+                    minID = allProposerIds[boneyID];
+                }
+            }
+
+            //Verificar se o server com minIdx está up! Se não estiver repetir até chegar a mim!
+            //Se encontrar um que está up: espero ou aceito que ele vai fzr a comunicacao?
+
+
+            foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in boneyAddresses.Values)
             {
                 Console.WriteLine("Sending Promisse to server! ");
                 ConsensusPromisse response;
@@ -40,7 +67,7 @@ namespace BoneyServer
                 }
             }
 
-            int biggestLider = prop;
+            int biggestLider = -1;
             int biggestAccepted = -1;
             int idx = 0;
             //check if any other lider with bigger ID is working
@@ -52,11 +79,6 @@ namespace BoneyServer
                     biggestLider = lider;
                 }
                 idx++;
-            }
-
-            if (biggestLider != prop)
-            {
-                this.proposerId += this.amountOfNodes;
             }
             return biggestAccepted;
         }
