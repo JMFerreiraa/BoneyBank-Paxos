@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Google.Protobuf.Reflection;
 
 namespace BoneyServer
 {
@@ -11,8 +12,8 @@ namespace BoneyServer
         private int proposerId;
         private int amountOfNodes;
         private Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses;
-        Dictionary<int, List<int>> status;
-        private Dictionary<int, int> allProposerIds;
+        Dictionary<int, List<int>> status = new Dictionary<int, List<int>>();
+        private Dictionary<int, int> allProposerIds = new Dictionary<int, int>();
 
 
         public Proposer(int id, Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses)
@@ -28,6 +29,8 @@ namespace BoneyServer
 
         public int processProposal(int prop, Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses, List<int> status)
         {
+            
+
             List<int> lidersSeen = new List<int>();
             List<int> propValues = new List<int>();
             this.boneyAddresses = boneyAddresses;
@@ -36,6 +39,7 @@ namespace BoneyServer
             //Iterar todos os servidores até chegar a mim
             int minIdx = this.proposerId;
             int minID = allProposerIds[this.proposerId];
+        startLabel:
             //Qual o id mais baixo?
             foreach (int boneyID in allProposerIds.Keys)
             {
@@ -46,9 +50,19 @@ namespace BoneyServer
                 }
             }
 
+            Console.WriteLine("minIDX = " + minIdx + " minID = " + minID);
             //Verificar se o server com minIdx está up! Se não estiver repetir até chegar a mim!
-            //Se encontrar um que está up: espero ou aceito que ele vai fzr a comunicacao?
+            if (minID != this.proposerId && status[minIdx] == 0)
+            {
+                allProposerIds[minIdx] += amountOfNodes;
+                goto startLabel;
+            }
+            else if (minID != this.proposerId && status[minIdx] == 1)
+            {
+                //Existe um com menor ID e inferior! O que fazer?
+            }
 
+            //Se for eu o "lider" então prosseguir e tentar obter consenso!!!
 
             foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in boneyAddresses.Values)
             {
@@ -70,7 +84,7 @@ namespace BoneyServer
             int biggestLider = -1;
             int biggestAccepted = -1;
             int idx = 0;
-            //check if any other lider with bigger ID is working
+            //check if any other lider with bigger ID was working before, and if it was, adopt its previous value!
             foreach (int lider in lidersSeen)
             {
                 if (lider > biggestLider)
@@ -80,6 +94,9 @@ namespace BoneyServer
                 }
                 idx++;
             }
+
+            //Aqui ja vai ter decidido oq é para mandar no accept!
+            //BiggestLider ja começou a fazer o biggestAccept
             return biggestAccepted;
         }
     }

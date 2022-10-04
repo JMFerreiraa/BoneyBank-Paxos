@@ -190,8 +190,8 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             }
             Program p = new Program();
             p.processId = Int32.Parse(args[0]);
-            p.proposer = new Proposer(p.processId, p.boneysAddresses);
             p.parseConfigFile();
+            p.proposer = new Proposer(p.processId, p.boneysAddresses);
             p.learn = new Learner(p.boneysAddresses.Count);
             Console.WriteLine("Write exit to quit");
             Server server = new Server
@@ -235,7 +235,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         public CompareAndSwapReply CAS(CompareAndSwapRequest request)
         {
             int outv_tmp;
-            Console.WriteLine("I got a request with value " + request.Invalue + "for slot " + request.Slot + " lets get consensus!");
+            Console.WriteLine("I got a request with value " + request.Invalue + " for slot " + request.Slot + " lets get consensus!");
             lock (this)
             {
                 if (p.liderHistory.Count >= request.Slot) //Lider já foi foi consensed! Então retornar só oq está na history
@@ -245,9 +245,12 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 }
                 else
                 {
-                    outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot - 1]);
+                    foreach (int v in p.boneysAddresses.Keys)
+                    {
+                        Console.WriteLine(v);
+                    }
+                    outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot]);
                     Console.WriteLine("I made consensus and the value consented is " + outv_tmp);
-
                 }
 
                 return new CompareAndSwapReply

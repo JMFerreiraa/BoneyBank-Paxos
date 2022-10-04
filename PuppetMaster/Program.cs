@@ -81,7 +81,6 @@ namespace PuppetMaster
 
             Program p = new Program();
             p.run(1);
-            p.run(3);
             p.run(4);
         }
     }

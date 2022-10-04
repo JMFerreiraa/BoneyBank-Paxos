@@ -273,7 +273,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             foreach(int server in serversAddresses.Keys)
             {
-                if (status[currentSlot - 1].ElementAt(server - 1) == 1)
+                if (status[currentSlot + 1].ElementAt(server - 1) == 1)
                 {
                     proposed = server;
                     break;
