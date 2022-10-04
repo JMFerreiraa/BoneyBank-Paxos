@@ -298,7 +298,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         public ConsensusAcceptReply Acc(ConsensusAcceptRequest request)
         {
             List<int> reply;
-            lock (this)
+            lock (p.acceptor)
             {
                 reply = p.acceptor.receivedAccept(request.Value, request.Leader, p.getActiveBoneys());
             }
@@ -317,7 +317,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public LearnersReply Lea(LearnersRequest request)
         {
-            lock (this)
+            lock (p.learn)
             {
                 p.learn.receivedLearner(request.Value, request.Leader, p.boneysAddresses, p.serversAddresses);
             }
