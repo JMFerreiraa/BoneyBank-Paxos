@@ -102,6 +102,20 @@ namespace BoneyServer
             }
             //Aqui ja vai ter decidido oq é para mandar no accept!
             //BiggestLider ja começou a fazer o biggestAccept
+
+            foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in boneyAddresses.Values)
+            {
+                try
+                {
+                    var response = server.Accept(new ConsensusAcceptRequest { Leader = proposerId, Value = 1 });
+                    Console.WriteLine("YESSSSSSSSSSSSSSSSSSSSSSS");
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine("NOOOOOOOOOOOOOOOOOOOOOOOO");
+                }
+            }
+
             return biggestAccepted;
         }
     }
@@ -112,10 +126,11 @@ namespace BoneyServer
         private int value = -1;
         private int biggest_lider_seen = -1;
         private int lider_that_wrote = -1;
+        private int processID;
 
-        public Acceptor()
+        public Acceptor(int processId)
         {
-
+            processID = processId;
         }
 
         // what will it send?  < Bool (0,1) if success, int saying biggest seen if bool negative, value>
@@ -137,34 +152,44 @@ namespace BoneyServer
             return list;
         }
 
-        public List<int> receivedAccept(int value_to_accept, int lider, 
+        public List<int> receivedAccept(int value_to_accept, int leader, 
             List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeServers)
         {
             Console.WriteLine("Received accept!");
-         
-            if (lider < lider_that_wrote || lider < biggest_lider_seen)
+
+            if (leader < lider_that_wrote || leader < biggest_lider_seen)
             {
                 return returnList(biggest_lider_seen, value);
             }
             else
             {
                 value = value_to_accept;
-                biggest_lider_seen = lider;
-                sendToLearners(activeServers, lider, value);
+                biggest_lider_seen = leader;
+                lider_that_wrote = leader;
+                Console.WriteLine("Acceptor {0} sending to learners {1}", processID, value_to_accept);
+                sendToLearners(activeServers, leader, value, processID);
                 return returnList(biggest_lider_seen, value);
             }
 
         }
 
         public void sendToLearners(List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeServers,
-            int leader, int value_send)
+            int leader, int value_send, int acceptorId)
         {
             Console.WriteLine("Sending to learners.");
             foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in activeServers)
             {
-                var response = server.Learner(new LearnersRequest {Leader = leader, Value = value_send });
+                var response = server.Learner(new LearnersRequest {
+                    Leader = leader, Value = value_send, Acceptor = acceptorId });
             }
             return;
+        }
+
+        public void clean()
+        {
+            value = -1;
+            biggest_lider_seen = -1;
+            lider_that_wrote = -1;
         }
     }
 
@@ -173,6 +198,7 @@ namespace BoneyServer
         private int acceptor_Number;
         private List<int> values_received = new List<int>();
         private int number_of_servers;
+        private int biggestLeaderSeen = -1;
         public Learner(int size)
         {
             number_of_servers = size;
@@ -182,42 +208,44 @@ namespace BoneyServer
             }
         }
 
-        public void receivedLearner(int value_sent, int leader, 
+        public void receivedLearner(int value_sent, int leader, int acceptor,
             Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneysAddresses,
             Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient> serversAddresses
             /*, server address para mandar msg para o client */)
         {
             // Leader - 3(n servers, we get their id)
-            int discard = leader;
 
-            Console.WriteLine("Welcome to the gulag, learners only may survive!");
+            Console.WriteLine("Welcome to the gulag, learners only may survive! Acceptor: {0}", acceptor);
             //send_msg_to_server(serversAddresses, 1); for debug
-            while (discard > 0)
-            {
-                if (boneysAddresses.ContainsKey(discard))
-                {
-                    break;
-                }
-                else
-                {
-                    discard -= boneysAddresses.Count;
-                }
-            }
-            values_received[discard -1] = value_sent;
 
-            foreach(int e in values_received)
+            if(biggestLeaderSeen > leader)
+            {
+                return;
+            }
+
+            biggestLeaderSeen = leader;
+            values_received[acceptor -1] = value_sent;
+
+            foreach (int i in values_received)
+            {
+                Console.Write(i.ToString() + " ");
+            }
+            Console.WriteLine();
+
+            foreach (int e in values_received)
             {
                 int count = 0;
                 foreach(int i in values_received)
                 {
-                    if(i == e)
+                    if(i == e && e > 0)
                     {
                         count++;
                     }
                 }
-                if(count >= number_of_servers/2)
+                if(count > number_of_servers/2)
                 {
                     send_msg_to_server(serversAddresses, e);
+                    //Clean learners function.
                     break;
                 }
                 count = 0;
@@ -228,20 +256,23 @@ namespace BoneyServer
         public void send_msg_to_server(Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient> serversAddresses,
             int consensus)
         {
-            /*
             foreach (BoneyServerCommunications.BoneyServerCommunicationsClient server in serversAddresses.Values)
             {
-                Console.WriteLine("hehehehehehee");
-                var response = server.Consensus(new ConsensusInLearnerRequest { Value = consensus});
-                Console.WriteLine("hihihihiihhi");
-            }*/  // Something wrong here.
-
+                try {
+                    var response = server.Consensus(new ConsensusInLearnerRequest { Value = consensus });
+                    Console.WriteLine("Sent message to main server with sucess");
+                }catch(Exception e)
+                {
+                    Console.WriteLine(" Fail to send msg to main servers");
+                }
+            }
+            /*
             GrpcChannel channel;
             BoneyServerCommunications.BoneyServerCommunicationsClient client;
             channel = GrpcChannel.ForAddress("http://localhost:1001");
             client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
             var resp = client.Consensus(new ConsensusInLearnerRequest { Value = consensus });
-            return;
+            return;*/
 
         }
     }

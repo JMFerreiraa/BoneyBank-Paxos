@@ -29,6 +29,7 @@ message ConsensusAcceptReply{
 message LearnersRequest{
 	int32 leader = 1;
 	int32 value = 2;
+	int32 acceptor = 3;
 }
 
 message LearnersReply{

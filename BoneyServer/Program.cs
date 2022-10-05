@@ -14,7 +14,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         private string host;
         private int port;
         internal Proposer proposer;
-        internal Acceptor acceptor = new Acceptor();
+        internal Acceptor acceptor;
         internal Learner learn;
 
         int processId = -1;
@@ -193,6 +193,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             p.parseConfigFile();
             p.proposer = new Proposer(p.processId, p.boneysAddresses);
             p.learn = new Learner(p.boneysAddresses.Count);
+            p.acceptor = new Acceptor(p.processId);
             Console.WriteLine("Write exit to quit");
             Server server = new Server
             {
@@ -317,7 +318,8 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         {
             lock (p.learn)
             {
-                p.learn.receivedLearner(request.Value, request.Leader, p.boneysAddresses, p.serversAddresses);
+                p.learn.receivedLearner(request.Value, request.Leader, 
+                    request.Acceptor, p.boneysAddresses, p.serversAddresses);
             }
             return new LearnersReply
             {

@@ -145,6 +145,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         private Dictionary<int, string> boneysAddresses = new Dictionary<int, string>();
         private Dictionary<int, List<int>> status = new Dictionary<int, List<int>>();
 
+        int port;
         int numberOfSlots = 0;
         string timeToStart;
         static int slotTime = 0;
@@ -152,6 +153,12 @@ namespace BankServer // Note: actual namespace depends on the project name.
         int counter = 0;
         List<int> frozen = new List<int>();
         System.Timers.Timer aTimer = new System.Timers.Timer(2000);
+
+        public int Port
+        {
+            get { return port; }
+            set { port = value; }
+        }
 
         public void parseConfigFile()
         {
@@ -178,7 +185,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
                                 numberOfServers += 1;
                                 serversAddresses.Add(Int32.Parse(config[1]), config[3]);
                                 if (Int32.Parse(config[1]) == processId)
+                                {
                                     processUrl = config[3];
+                                }
                                 break;
                             case "client":
                                 clientsAddresses.Add(Int32.Parse(config[1]), null);
@@ -222,6 +231,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         break;
                 }
             }
+
+            port = Int32.Parse(processUrl.Split(":")[2]);
 
             int debug = 0;
             if(debug == 1) {
@@ -280,7 +291,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             execute.AutoReset = false;
             execute.Start();
 
-            aTimer = new System.Timers.Timer(5000);
+            aTimer = new System.Timers.Timer(15000);
             aTimer.Elapsed += findLider;
             aTimer.AutoReset = true;
             aTimer.Enabled = true;
@@ -321,7 +332,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             GrpcChannel channel;
             BoneyServerCommunications.BoneyServerCommunicationsClient client;
-            channel = GrpcChannel.ForAddress("http://localhost:10003");
+            channel = GrpcChannel.ForAddress("http://localhost:10000");
             client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
             var reply = client.CompareAndSwap(new CompareAndSwapRequest
             { Slot = currentSlot, Invalue = proposed });
@@ -337,17 +348,18 @@ namespace BankServer // Note: actual namespace depends on the project name.
             const int Port = 1001;
             Program p = new Program();
             p.processId = Int32.Parse(args[0]);
+            
+            p.parseConfigFile();
+
             Server server = new Server
             {
                 Services = { BankClientCommunications.BindService(new BankService()),
                             BoneyServerCommunications.BindService(new BankBoney())},
-                Ports = { new ServerPort("localhost", Port, ServerCredentials.Insecure) }
+                Ports = { new ServerPort("localhost", p.Port, ServerCredentials.Insecure) }
             };
             server.Start();
-            Console.WriteLine("BankServer listening on port " + Port);
 
-            
-            p.parseConfigFile();
+            Console.WriteLine("BankServer listening on port " + p.Port);
 
             Console.WriteLine("Server will be running for " + p.numberOfSlots + " slots, each lasting " + slotTime + " seconds...");
 
