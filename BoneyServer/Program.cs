@@ -280,9 +280,8 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         {
             Console.WriteLine("I got a prepare from " + request.Leader + "!");
             List<int> reply;
-            lock (this)
+            lock (p.proposer)
             {
-
                 reply = p.acceptor.recievedProposel(request.Leader);
             }
             return new ConsensusPromisse

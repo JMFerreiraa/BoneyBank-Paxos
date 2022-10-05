@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Google.Protobuf.Reflection;
+using Grpc.Core;
+using Grpc.Net.Client;
 
 namespace BoneyServer
 {
@@ -71,6 +73,8 @@ namespace BoneyServer
                 try
                 {
                     response = server.Prepare(new ConsensusPrepare { Leader = proposerId });
+                    //ConsensusAcceptReply response2 = server.Accept(new ConsensusAcceptRequest { Leader = proposerId, Value = 1 });
+                    // using this for debug
                     Console.WriteLine("We got a ConsensusPromisse");
                     lidersSeen.Add(response.PrevAcceptedLider);
                     propValues.Add(response.PrevAcceptedValue);
@@ -186,8 +190,8 @@ namespace BoneyServer
             int discard = leader;
 
             Console.WriteLine("Welcome to the gulag, learners only may survive!");
-
-            while(discard > 0)
+            //send_msg_to_server(serversAddresses, 1); for debug
+            while (discard > 0)
             {
                 if (boneysAddresses.ContainsKey(discard))
                 {
@@ -198,7 +202,7 @@ namespace BoneyServer
                     discard -= boneysAddresses.Count;
                 }
             }
-            values_received[discard] = value_sent;
+            values_received[discard -1] = value_sent;
 
             foreach(int e in values_received)
             {
@@ -223,10 +227,19 @@ namespace BoneyServer
         public void send_msg_to_server(Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient> serversAddresses,
             int consensus)
         {
+            /*
             foreach (BoneyServerCommunications.BoneyServerCommunicationsClient server in serversAddresses.Values)
             {
+                Console.WriteLine("hehehehehehee");
                 var response = server.Consensus(new ConsensusInLearnerRequest { Value = consensus});
-            }
+                Console.WriteLine("hihihihiihhi");
+            }*/  // Something wrong here.
+
+            GrpcChannel channel;
+            BoneyServerCommunications.BoneyServerCommunicationsClient client;
+            channel = GrpcChannel.ForAddress("http://localhost:1001");
+            client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
+            var resp = client.Consensus(new ConsensusInLearnerRequest { Value = consensus });
             return;
 
         }

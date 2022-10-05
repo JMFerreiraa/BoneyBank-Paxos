@@ -108,6 +108,31 @@ namespace BankServer // Note: actual namespace depends on the project name.
         }
     }
 
+    public class BankBoney : BoneyServerCommunications.BoneyServerCommunicationsBase
+    {
+        public BankBoney()
+        {
+
+        }
+
+        public override Task<ConsensusInLearnerReply> Consensus(
+            ConsensusInLearnerRequest request, ServerCallContext context)
+        {
+            return Task.FromResult(Conc(request));
+        }
+        public ConsensusInLearnerReply Conc(ConsensusInLearnerRequest request)
+        {
+            lock (this)
+            {
+                Console.WriteLine("ALLALALALAAL");
+            }
+            return new ConsensusInLearnerReply
+            {
+                Ok = true
+            };
+        }
+    }
+
 
     internal class Program
     {
@@ -314,7 +339,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
             p.processId = Int32.Parse(args[0]);
             Server server = new Server
             {
-                Services = { BankClientCommunications.BindService(new BankService()) },
+                Services = { BankClientCommunications.BindService(new BankService()),
+                            BoneyServerCommunications.BindService(new BankBoney())},
                 Ports = { new ServerPort("localhost", Port, ServerCredentials.Insecure) }
             };
             server.Start();
