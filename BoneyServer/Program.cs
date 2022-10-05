@@ -245,10 +245,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 }
                 else
                 {
-                    foreach (int v in p.boneysAddresses.Keys)
-                    {
-                        Console.WriteLine(v);
-                    }
                     outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot]);
                     Console.WriteLine("I made consensus and the value consented is " + outv_tmp);
                 }

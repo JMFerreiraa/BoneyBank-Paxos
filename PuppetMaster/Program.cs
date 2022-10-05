@@ -44,7 +44,7 @@ namespace PuppetMaster
             return ptype;
         }
 
-        void run(int processID)
+        Process run(int processID)
         {
             var baseDir = Directory.GetParent(System.IO.Directory.GetCurrentDirectory()).Parent.Parent.Parent;
             var bankClientExec = baseDir + "\\BankClient\\bin\\Debug\\net6.0\\BankClient";
@@ -73,15 +73,29 @@ namespace PuppetMaster
             startInfo.FileName = dirToUse;
             startInfo.WindowStyle = ProcessWindowStyle.Normal;
             startInfo.Arguments = "" + processID;
-            Process.Start(startInfo);
+            Process p = Process.Start(startInfo);
+            return p;
         }
         static void Main(string[] args)
         {
             Console.WriteLine("Initiating Startup Sequence! Get ready!");
-
+            List<Process> processesList = new List<Process>();
             Program p = new Program();
-            p.run(1);
-            p.run(4);
+            processesList.Add(p.run(1));
+            processesList.Add(p.run(2));
+            processesList.Add(p.run(3));
+            processesList.Add(p.run(4));
+
+            while (true)
+            {
+                Console.WriteLine("Write exit to exit!");
+                if (Console.ReadLine() == "exit")
+                    break;
+            }
+            foreach (Process proce in processesList)
+            {
+                proce.Kill();
+            }
         }
     }
 }

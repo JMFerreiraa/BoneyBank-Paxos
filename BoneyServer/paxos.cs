@@ -32,16 +32,15 @@ namespace BoneyServer
         public int processProposal(int prop, Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses, List<int> status)
         {
             
-
             List<int> lidersSeen = new List<int>();
             List<int> propValues = new List<int>();
             this.boneyAddresses = boneyAddresses;
-            //TO-DO: Verificar aqui se há algum servidor com ID mais baixo que esteja ligado
+        //TO-DO: Verificar aqui se há algum servidor com ID mais baixo que esteja ligado
 
-            //Iterar todos os servidores até chegar a mim
+        //Iterar todos os servidores até chegar a mim
+        startLabel:
             int minIdx = this.proposerId;
             int minID = allProposerIds[this.proposerId];
-        startLabel:
             //Qual o id mais baixo?
             foreach (int boneyID in allProposerIds.Keys)
             {
@@ -57,11 +56,14 @@ namespace BoneyServer
             if (minID != this.proposerId && status[minIdx] == 0)
             {
                 allProposerIds[minIdx] += amountOfNodes;
+                Console.WriteLine(allProposerIds[1]);
                 goto startLabel;
             }
             else if (minID != this.proposerId && status[minIdx] == 1)
             {
-                //Existe um com menor ID e inferior! O que fazer?
+                //Existe um com menor ID e a funcionar! O que fazer?
+                //Para já vou parar de fazer paxos e assumir que outra réplica conseguiu fazer :)
+                return -2;
             }
 
             //Se for eu o "lider" então prosseguir e tentar obter consenso!!!
@@ -98,7 +100,6 @@ namespace BoneyServer
                 }
                 idx++;
             }
-
             //Aqui ja vai ter decidido oq é para mandar no accept!
             //BiggestLider ja começou a fazer o biggestAccept
             return biggestAccepted;

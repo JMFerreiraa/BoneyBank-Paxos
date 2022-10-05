@@ -321,7 +321,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             GrpcChannel channel;
             BoneyServerCommunications.BoneyServerCommunicationsClient client;
-            channel = GrpcChannel.ForAddress("http://localhost:10000");
+            channel = GrpcChannel.ForAddress("http://localhost:10003");
             client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
             var reply = client.CompareAndSwap(new CompareAndSwapRequest
             { Slot = currentSlot, Invalue = proposed });
