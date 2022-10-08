@@ -235,26 +235,37 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public CompareAndSwapReply CAS(CompareAndSwapRequest request)
         {
-            int outv_tmp;
+            int outv_tmp = -10;
             Console.WriteLine("I got a request with value " + request.Invalue + " for slot " + request.Slot + " lets get consensus!");
-            lock (this)
+            if (p.liderHistory.Count >= request.Slot) //Lider já foi foi consensed! Então retornar só oq está na history
             {
-                if (p.liderHistory.Count >= request.Slot) //Lider já foi foi consensed! Então retornar só oq está na history
-                {
-                    outv_tmp = p.liderHistory.ElementAt(request.Slot);
-                    Console.WriteLine("This slot was already consensed in the past! We got value " + outv_tmp);
-                }
-                else
-                {
-                    outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot]);
-                    Console.WriteLine("I made consensus and the value consented is " + outv_tmp);
-                }
-
-                return new CompareAndSwapReply
-                {
-                    Outvalue = 1
-                };
+                outv_tmp = p.liderHistory.ElementAt(request.Slot - 1);
+                Console.WriteLine("This slot was already consensed in the past! We got value " + outv_tmp);
             }
+            Console.WriteLine("outv_tmp = " + outv_tmp);
+            if (outv_tmp == -10)
+            {
+                outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot]);
+                lock (p.proposer){
+                    if (outv_tmp == -2)
+                    {
+                        //N sou o lider --> Ficar a espera do consensus de outros processos bloqueada!
+                        Console.WriteLine("Getting locked :(");
+                        Monitor.Wait(p.proposer);
+                        Console.WriteLine("Leaving Lock!");
+                        outv_tmp = p.liderHistory.ElementAt(request.Slot);
+                        Console.WriteLine("Already consensed in the past! We got value " + outv_tmp);
+                    }
+                }
+                Console.WriteLine("I made consensus and the value consented is " + outv_tmp);
+                
+            }
+            Console.WriteLine("Sending reply to server!");
+            return new CompareAndSwapReply
+            {
+                Outvalue = 1
+            };
+            
         }
     }
 
@@ -297,14 +308,30 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         public ConsensusAcceptReply Acc(ConsensusAcceptRequest request)
         {
             List<int> reply;
+            lock (p.proposer)
+            {
+                try
+                {
+                    Monitor.PulseAll(p.proposer);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("ERROR :/  " + e);
+                }
+            }
+
             lock (p.acceptor)
             {
+                Console.WriteLine("ACCEPTOR: IN " + request.Value + " from " + request.Leader);
                 reply = p.acceptor.receivedAccept(request.Value, request.Leader, p.getActiveBoneys());
+                p.liderHistory.Add(reply[1]);
+                Console.WriteLine("ACCEPTOR: OUT " + request.Value + " from " + request.Leader);
             }
             return new ConsensusAcceptReply
             {
-                Leader = reply[1],
-                Value = reply[2]
+                Leader = reply[0],
+                Value = reply[1]
+                //mais um parametro?
             };
         }
 
@@ -316,14 +343,17 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public LearnersReply Lea(LearnersRequest request)
         {
-            lock (p.learn)
+            int accepted;
+            lock (p.learn)// MERDA AQUI VE
             {
-                p.learn.receivedLearner(request.Value, request.Leader, 
+                Console.WriteLine("Entrou1");
+                accepted = p.learn.receivedLearner(request.Value, request.Leader, 
                     request.Acceptor, p.boneysAddresses, p.serversAddresses);
+                Console.WriteLine("Saiu1");
             }
             return new LearnersReply
             {
-                Value = 0 
+                Value = accepted
             };
         }
 

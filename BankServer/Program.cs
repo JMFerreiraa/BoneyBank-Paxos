@@ -328,14 +328,25 @@ namespace BankServer // Note: actual namespace depends on the project name.
             Random random = new Random();
             int randomNumber1 = random.Next(boneysAddresses.Keys.ElementAt(0), boneysAddresses.Keys.ElementAt(0) + boneysAddresses.Count());
 
-            Console.WriteLine("I am proposing server " + proposed + " To be the lider! Sending to boney N " + randomNumber1);
+            Console.WriteLine("I am proposing server " + proposed + " To be the lider!");
 
-            GrpcChannel channel;
-            BoneyServerCommunications.BoneyServerCommunicationsClient client;
-            channel = GrpcChannel.ForAddress("http://localhost:10000");
-            client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
-            var reply = client.CompareAndSwap(new CompareAndSwapRequest
-            { Slot = currentSlot, Invalue = proposed });
+            foreach (string server in boneysAddresses.Values)
+            {
+                try{
+                GrpcChannel channel;
+                BoneyServerCommunications.BoneyServerCommunicationsClient client;
+                Console.WriteLine("Sending to server " + server);
+                channel = GrpcChannel.ForAddress(server);
+                client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
+                var reply = client.CompareAndSwap(new CompareAndSwapRequest
+                { Slot = currentSlot, Invalue = proposed },
+                    deadline: DateTime.UtcNow.AddSeconds(1));
+                }
+                catch
+                {
+                    Console.WriteLine("We got an error! :(");
+                }
+            }
         }
 
         static void Main(string[] args)
