@@ -235,15 +235,14 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public CompareAndSwapReply CAS(CompareAndSwapRequest request)
         {
-            int outv_tmp = -10;
+            int outv_tmp;
             Console.WriteLine("I got a request with value " + request.Invalue + " for slot " + request.Slot + " lets get consensus!");
             if (p.liderHistory.Count >= request.Slot) //Lider já foi foi consensed! Então retornar só oq está na history
             {
                 outv_tmp = p.liderHistory.ElementAt(request.Slot - 1);
                 Console.WriteLine("This slot was already consensed in the past! We got value " + outv_tmp);
             }
-            Console.WriteLine("outv_tmp = " + outv_tmp);
-            if (outv_tmp == -10)
+            else
             {
                 outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot]);
                 lock (p.proposer){

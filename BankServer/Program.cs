@@ -312,7 +312,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             foreach(int server in serversAddresses.Keys)
             {
-                if (status[currentSlot + 1].ElementAt(server - 1) == 1)
+                if (status[currentSlot].ElementAt(server - 1) == 1)
                 {
                     proposed = server;
                     break;
@@ -343,11 +343,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
                 var reply = client.CompareAndSwap(new CompareAndSwapRequest
                 { Slot = currentSlot, Invalue = proposed },
-                    deadline: DateTime.UtcNow.AddSeconds(1));
+                    deadline: DateTime.UtcNow.AddSeconds(3));
                 }
-                catch
+                catch(Exception ex)
                 {
-                    Console.WriteLine("We got an error! :(");
+                    Console.WriteLine("We got an error! :( + " + ex);
                 }
             }
         }
