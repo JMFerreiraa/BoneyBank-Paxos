@@ -5,14 +5,15 @@ using System.Timers;
 
 namespace BankServer // Note: actual namespace depends on the project name.
 {
-    public class BankService : BankClientCommunications.BankClientCommunicationsBase
+    internal class BankService : BankClientCommunications.BankClientCommunicationsBase
     {
 
-        private Dictionary<string, float> accounts = new Dictionary<string, float>();
+        //private Dictionary<string, float> accounts = new Dictionary<string, float>();
+        private Program p;
 
-
-        public BankService()
+        public BankService(Program p)
         {
+            this.p = p;
         }
 
         public override Task<RegisterReply> Register(
@@ -43,13 +44,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
             bool success;
             lock (this)
             {
-                if (accounts.ContainsKey(request.Name)) { 
+                if (p.accounts.ContainsKey(request.Name)) { 
                     success = false;
                     Console.WriteLine("New Client tried to register with name " + request.Name+ " but failed!");
                 }
                 else
                 {
-                    accounts.Add(request.Name, 0);
+                    p.accounts.Add(request.Name, 0);
                     success = true;
                     Console.WriteLine("New Client registered with name " + request.Name);
                 }
@@ -66,7 +67,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             Console.WriteLine("New Deposit by " + request.Name + "amount: " + request.Amount);
             lock (this)
             {
-                accounts[request.Name] += request.Amount;
+                p.accounts[request.Name] += request.Amount;
             }
             return new DepositeReply
             {
@@ -81,8 +82,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
             bool success = false;
             lock (this)
             {
-                if (accounts[request.Name] - request.Amount > 0) { 
-                    accounts[request.Name] -= request.Amount;
+                if (p.accounts[request.Name] - request.Amount > 0) { 
+                    p.accounts[request.Name] -= request.Amount;
                     success = true;
                 }
             }
@@ -99,7 +100,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             float amount;
             lock (this)
             {
-                amount = accounts[request.Name];
+                amount = p.accounts[request.Name];
             }
             return new ReadReply
             {
@@ -153,6 +154,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
         int counter = 0;
         List<int> frozen = new List<int>();
         System.Timers.Timer aTimer = new System.Timers.Timer(2000);
+
+        internal Dictionary<string, float> accounts = new Dictionary<string, float>();
 
         public int Port
         {
@@ -364,7 +367,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             Server server = new Server
             {
-                Services = { BankClientCommunications.BindService(new BankService()),
+                Services = { BankClientCommunications.BindService(new BankService(p)),
                             BoneyServerCommunications.BindService(new BankBoney())},
                 Ports = { new ServerPort("localhost", p.Port, ServerCredentials.Insecure) }
             };
