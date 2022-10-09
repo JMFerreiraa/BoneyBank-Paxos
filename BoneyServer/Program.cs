@@ -236,6 +236,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         public CompareAndSwapReply CAS(CompareAndSwapRequest request)
         {
             int outv_tmp;
+            
             Console.WriteLine("I got a request with value " + request.Invalue + " for slot " + request.Slot + " lets get consensus!");
             if (p.liderHistory.Count >= request.Slot) //Lider já foi foi consensed! Então retornar só oq está na history
             {
@@ -255,17 +256,21 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                         outv_tmp = p.liderHistory.ElementAt(request.Slot - 1);
                         Console.WriteLine("Already consensed in the past! We got value " + outv_tmp);
                     }
+                    else
+                    {
+                        //Clear the classes for a new paxos cycle;
+                        p.learn.clean();
+                        p.acceptor.clean();
+                        p.learn.show();
+                        p.acceptor.show();
+                    }
                 }
                 Console.WriteLine("I made consensus and the value consented is " + outv_tmp);
-                
             }
             Console.WriteLine("Sending reply to server!");
 
-            //Clear the classes for a new paxos cycle;
-            p.learn.clean();
-            p.acceptor.clean();
-            p.learn.show();
-            p.acceptor.show();
+
+
             return new CompareAndSwapReply
             {
                 Outvalue = outv_tmp
@@ -333,7 +338,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                     Console.WriteLine("ERROR :/  " + e);
                 }
             }
-
+            Console.WriteLine("Reply = " + reply[0] + " " + reply[1]);
             return new ConsensusAcceptReply
             {
                 Leader = reply[0],
@@ -353,10 +358,8 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             int accepted;
             lock (p.learn)// MERDA AQUI VE
             {
-                Console.WriteLine("Entrou1");
                 accepted = p.learn.receivedLearner(request.Value, request.Leader, 
                     request.Acceptor, p.boneysAddresses, p.serversAddresses);
-                Console.WriteLine("Saiu1");
             }
 
             if (accepted != 0)

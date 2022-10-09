@@ -106,13 +106,14 @@ namespace BoneyServer
                 try
                 {
                     var response = server.Accept(new ConsensusAcceptRequest { Leader = proposerId, Value = prop }); //TO_CHANGE
+                    
                     if (response.Leader == proposerId && response.Value == prop)
                         counter += 1;
-                    if (counter == 3)
+                    if (counter == boneyAddresses.Count)
                     {
                         biggestAccepted = response.Value;
                     }
-                    Console.WriteLine("PROPOSERS: YESSSSSSSSSSSSSSSSSSSSSSS");
+                    Console.WriteLine("PROPOSERS: YESSSSSSSSSSSSSSSSSSSSSSS" + response.Leader + " " + response.Value);
                 }
                 catch(Exception e)
                 {
@@ -120,7 +121,7 @@ namespace BoneyServer
                 }
             }
 
-            Console.WriteLine("Returning biggestaccepted! = " + biggestAccepted); 
+            Console.WriteLine("Returning biggestaccepted! = " + biggestAccepted);
             return biggestAccepted;
         }
     }
@@ -167,12 +168,13 @@ namespace BoneyServer
             }
             else
             {
+                Console.WriteLine("ACCEPTORRRRRR: biggest -> {0}, value ->{1}", leader, value_to_accept);
                 value = value_to_accept;
                 biggest_lider_seen = leader;
                 lider_that_wrote = leader;
                 Console.WriteLine("ACCEPTOR: Acceptor {0} sending to learners {1}", processID, value_to_accept);
                 int response = sendToLearners(activeServers, leader, value, processID);
-                Console.WriteLine("SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS0");
+                Console.WriteLine("SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS");
                 return returnList(biggest_lider_seen, value);
             }
         }

@@ -355,10 +355,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             foreach (string server in boneysAddresses.Values)
             {
-
                 var threadFour = new Thread(() => sendToServer(proposed, server));
                 threadFour.Start();
-
             }
         }
 
