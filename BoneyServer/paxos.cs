@@ -120,7 +120,7 @@ namespace BoneyServer
                 }
             }
 
-            Console.WriteLine("Returning biggestaccepted!");
+            Console.WriteLine("Returning biggestaccepted! = " + biggestAccepted); 
             return biggestAccepted;
         }
     }

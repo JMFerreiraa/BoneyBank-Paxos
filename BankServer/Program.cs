@@ -2,6 +2,7 @@ using Grpc.Core;
 using Grpc.Net.Client;
 using System;
 using System.Timers;
+using System.Threading;
 
 namespace BankServer // Note: actual namespace depends on the project name.
 {
@@ -300,7 +301,26 @@ namespace BankServer // Note: actual namespace depends on the project name.
             aTimer.Enabled = true;
         }
 
+        void sendToServer(int proposed, string targetBoneyAddress)
+        {
+            try
+            {
+                GrpcChannel channel;
+                BoneyServerCommunications.BoneyServerCommunicationsClient client;
+                Console.WriteLine("Sending to server " + targetBoneyAddress);
+                channel = GrpcChannel.ForAddress(targetBoneyAddress);
+                client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
+                var reply = client.CompareAndSwap(new CompareAndSwapRequest
+                        { Slot = currentSlot, Invalue = proposed },
+                    deadline: DateTime.UtcNow.AddSeconds(10));
 
+                Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("We got an error! :( + " + ex);
+            }
+        }
         public void findLider(object sender, ElapsedEventArgs e)
         {
             // Do your stuff and recalculate the timer interval and reset the Timer.
@@ -335,22 +355,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             foreach (string server in boneysAddresses.Values)
             {
-                try{
-                    GrpcChannel channel;
-                    BoneyServerCommunications.BoneyServerCommunicationsClient client;
-                    Console.WriteLine("Sending to server " + server);
-                    channel = GrpcChannel.ForAddress(server);
-                    client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
-                    var reply = client.CompareAndSwap(new CompareAndSwapRequest
-                    { Slot = currentSlot, Invalue = proposed },
-                        deadline: DateTime.UtcNow.AddSeconds(3));
 
-                    Console.WriteLine("Consensed value was = " + reply.Outvalue);
-                }
-                catch(Exception ex)
-                {
-                    Console.WriteLine("We got an error! :( + " + ex);
-                }
+                var threadFour = new Thread(() => sendToServer(proposed, server));
+                threadFour.Start();
+
             }
         }
 

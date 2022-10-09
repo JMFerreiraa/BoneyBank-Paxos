@@ -252,7 +252,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                         Console.WriteLine("Getting locked :(");
                         Monitor.Wait(p.proposer);
                         Console.WriteLine("Leaving Lock!");
-                        outv_tmp = p.liderHistory.ElementAt(request.Slot);
+                        outv_tmp = p.liderHistory.ElementAt(request.Slot - 1);
                         Console.WriteLine("Already consensed in the past! We got value " + outv_tmp);
                     }
                 }
