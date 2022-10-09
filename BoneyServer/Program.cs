@@ -260,6 +260,12 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 
             }
             Console.WriteLine("Sending reply to server!");
+
+            //Clear the classes for a new paxos cycle;
+            p.learn.clean();
+            p.acceptor.clean();
+            p.learn.show();
+            p.acceptor.show();
             return new CompareAndSwapReply
             {
                 Outvalue = outv_tmp
@@ -320,7 +326,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             {
                 try
                 {
-                    Monitor.PulseAll(p.proposer);
+                    //Monitor.PulseAll(p.proposer);
                 }
                 catch (Exception e)
                 {
@@ -368,9 +374,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                     }
                 }
             }
-
-
-
 
             return new LearnersReply
             {

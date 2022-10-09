@@ -17,7 +17,6 @@ namespace BoneyServer
         Dictionary<int, List<int>> status = new Dictionary<int, List<int>>();
         private Dictionary<int, int> allProposerIds = new Dictionary<int, int>();
 
-
         public Proposer(int id, Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses)
         {
             proposerId = id;
@@ -208,6 +207,12 @@ namespace BoneyServer
             biggest_lider_seen = -1;
             lider_that_wrote = -1;
         }
+
+        public void show()
+        {
+            Console.WriteLine("ACCEPTOR: value-> {0}, biggest_lider_seen-> {1}, lider_that_wrote-> {2}",
+                value, biggest_lider_seen, lider_that_wrote);
+        }
     }
 
     public class Learner
@@ -237,12 +242,7 @@ namespace BoneyServer
             biggestLeaderSeen = leader;
             values_received[acceptor -1] = value_sent;
 
-            Console.WriteLine("LEARNER:");
-            foreach (int i in values_received)
-            {
-                Console.Write(i.ToString() + " ");
-            }
-            Console.WriteLine();
+            show();
 
             foreach (int e in values_received)
             {
@@ -281,8 +281,19 @@ namespace BoneyServer
 
         }
 
+        public void show()
+        {
+            Console.WriteLine("LEARNER:");
+            foreach (int i in values_received)
+            {
+                Console.Write(i.ToString() + " ");
+            }
+            Console.WriteLine();
+        }
+
         public void clean()
         {
+            values_received.Clear();
             for (int i = 0; i < number_of_servers; i++)
             {
                 values_received.Add(-1);
