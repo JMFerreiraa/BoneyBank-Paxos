@@ -30,7 +30,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         static int slotTime = 0;
         int numberOfServers = 0;
         int counter = 0;
-        List<int> frozen = new List<int>();
+        internal List<int> frozen = new List<int>();
         System.Timers.Timer aTimer = new System.Timers.Timer(2000);
         internal int timeSlot;
 
@@ -262,7 +262,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             Console.WriteLine("Sending reply to server!");
             return new CompareAndSwapReply
             {
-                Outvalue = 1
+                Outvalue = outv_tmp
             };
             
         }
@@ -307,6 +307,15 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         public ConsensusAcceptReply Acc(ConsensusAcceptRequest request)
         {
             List<int> reply;
+
+            //ERRADO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            lock (p.acceptor)
+            {
+                Console.WriteLine("ACCEPTOR: IN " + request.Value + " from " + request.Leader);
+                reply = p.acceptor.receivedAccept(request.Value, request.Leader, p.boneysAddresses.Values.ToList());
+                Console.WriteLine("ACCEPTOR: OUT " + request.Value + " from " + request.Leader);
+            }
+
             lock (p.proposer)
             {
                 try
@@ -319,13 +328,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 }
             }
 
-            lock (p.acceptor)
-            {
-                Console.WriteLine("ACCEPTOR: IN " + request.Value + " from " + request.Leader);
-                reply = p.acceptor.receivedAccept(request.Value, request.Leader, p.getActiveBoneys());
-                p.liderHistory.Add(reply[1]);
-                Console.WriteLine("ACCEPTOR: OUT " + request.Value + " from " + request.Leader);
-            }
             return new ConsensusAcceptReply
             {
                 Leader = reply[0],
@@ -350,6 +352,26 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                     request.Acceptor, p.boneysAddresses, p.serversAddresses);
                 Console.WriteLine("Saiu1");
             }
+
+            if (accepted != 0)
+            {
+                p.liderHistory.Add(accepted);
+                lock (p.proposer)
+                {
+                    try
+                    {
+                        Monitor.PulseAll(p.proposer);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("ERROR :/  " + e);
+                    }
+                }
+            }
+
+
+
+
             return new LearnersReply
             {
                 Value = accepted

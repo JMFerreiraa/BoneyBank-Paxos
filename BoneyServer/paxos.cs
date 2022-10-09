@@ -76,7 +76,6 @@ namespace BoneyServer
                 try
                 {
                     response = server.Prepare(new ConsensusPrepare { Leader = proposerId });
-                    //ConsensusAcceptReply response2 = server.Accept(new ConsensusAcceptRequest { Leader = proposerId, Value = 1 });
                     // using this for debug
                     Console.WriteLine("PROPOSERS: We got a ConsensusPromisse");
                     lidersSeen.Add(response.PrevAcceptedLider);
@@ -101,16 +100,19 @@ namespace BoneyServer
                 }
                 idx++;
             }
-            //Aqui ja vai ter decidido oq é para mandar no accept!
-            //BiggestLider ja começou a fazer o biggestAccept
 
-            //int consensus[]
-            
+            int counter = 0;
             foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in boneyAddresses.Values)
             {
                 try
                 {
-                    var response = server.Accept(new ConsensusAcceptRequest { Leader = proposerId, Value = 1 }); //TO_CHANGE
+                    var response = server.Accept(new ConsensusAcceptRequest { Leader = proposerId, Value = prop }); //TO_CHANGE
+                    if (response.Leader == proposerId && response.Value == prop)
+                        counter += 1;
+                    if (counter == 3)
+                    {
+                        biggestAccepted = response.Value;
+                    }
                     Console.WriteLine("PROPOSERS: YESSSSSSSSSSSSSSSSSSSSSSS");
                 }
                 catch(Exception e)
@@ -118,7 +120,6 @@ namespace BoneyServer
                     Console.WriteLine("PROPOSERS ERROR: " + e);
                 }
             }
-            
 
             Console.WriteLine("Returning biggestaccepted!");
             return biggestAccepted;

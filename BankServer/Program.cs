@@ -336,14 +336,16 @@ namespace BankServer // Note: actual namespace depends on the project name.
             foreach (string server in boneysAddresses.Values)
             {
                 try{
-                GrpcChannel channel;
-                BoneyServerCommunications.BoneyServerCommunicationsClient client;
-                Console.WriteLine("Sending to server " + server);
-                channel = GrpcChannel.ForAddress(server);
-                client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
-                var reply = client.CompareAndSwap(new CompareAndSwapRequest
-                { Slot = currentSlot, Invalue = proposed },
-                    deadline: DateTime.UtcNow.AddSeconds(3));
+                    GrpcChannel channel;
+                    BoneyServerCommunications.BoneyServerCommunicationsClient client;
+                    Console.WriteLine("Sending to server " + server);
+                    channel = GrpcChannel.ForAddress(server);
+                    client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
+                    var reply = client.CompareAndSwap(new CompareAndSwapRequest
+                    { Slot = currentSlot, Invalue = proposed },
+                        deadline: DateTime.UtcNow.AddSeconds(3));
+
+                    Console.WriteLine("Consensed value was = " + reply.Outvalue);
                 }
                 catch(Exception ex)
                 {
