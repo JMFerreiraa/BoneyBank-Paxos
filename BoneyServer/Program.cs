@@ -357,7 +357,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         {
             int accepted;
             object obj = new object();
-            lock (p.learn)// MERDA AQUI VE
+            lock (p.learn)
             {
                 accepted = p.learn.receivedLearner(request.Value, request.Leader, 
                     request.Acceptor, p.boneysAddresses, p.serversAddresses);
@@ -379,7 +379,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 }
                 lock (obj)
                 {
-                    Console.WriteLine("PULSSSIIIIIINNGGGGGGGGGGG");
                     Monitor.PulseAll(obj);
                 }
             }
@@ -387,7 +386,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             {
                 lock (obj)
                 {
-                    Console.WriteLine("PULSSSIIIIIINNGGGGGGGGGGG nooot");
                     Monitor.Wait(obj);
                 }
             }
