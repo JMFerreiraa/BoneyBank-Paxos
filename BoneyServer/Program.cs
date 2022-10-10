@@ -356,6 +356,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         public LearnersReply Lea(LearnersRequest request)
         {
             int accepted;
+            object obj = new object();
             lock (p.learn)// MERDA AQUI VE
             {
                 accepted = p.learn.receivedLearner(request.Value, request.Leader, 
@@ -376,16 +377,18 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                         Console.WriteLine("ERROR :/  " + e);
                     }
                 }
-                lock (p.acceptor)
+                lock (obj)
                 {
-                    Monitor.PulseAll(p.acceptor);
+                    Console.WriteLine("PULSSSIIIIIINNGGGGGGGGGGG");
+                    Monitor.PulseAll(obj);
                 }
             }
             else
             {
-                lock (p.acceptor)
+                lock (obj)
                 {
-                    Monitor.Wait(p.acceptor);
+                    Console.WriteLine("PULSSSIIIIIINNGGGGGGGGGGG nooot");
+                    Monitor.Wait(obj);
                 }
             }
 

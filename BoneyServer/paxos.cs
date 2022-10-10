@@ -249,6 +249,7 @@ namespace BoneyServer
                     Value = value_send,
                     Acceptor = acceptorId
                 });
+                Console.WriteLine("PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP");
                 Console.WriteLine("Received learner response! " + response.Value);
                 lock (learnersrep)
                 {
