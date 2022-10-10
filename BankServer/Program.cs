@@ -146,6 +146,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         private Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
         private Dictionary<int, string> boneysAddresses = new Dictionary<int, string>();
         private Dictionary<int, List<int>> status = new Dictionary<int, List<int>>();
+        private Dictionary<int, int> liderBySlot = new Dictionary<int, int>();
 
         int port;
         int numberOfSlots = 0;
@@ -315,6 +316,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     deadline: DateTime.UtcNow.AddSeconds(10));
 
                 Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue);
+
+                lock (this)
+                {
+                    if(!liderBySlot.ContainsKey(currentSlot))
+                        liderBySlot.Add(currentSlot, reply.Outvalue);
+                    Monitor.Pulse(this);
+                }
             }
             catch (Exception ex)
             {
@@ -357,6 +365,12 @@ namespace BankServer // Note: actual namespace depends on the project name.
             {
                 var threadFour = new Thread(() => sendToServer(proposed, server));
                 threadFour.Start();
+            }
+
+            lock (this)
+            {
+                Monitor.Wait(this);
+                Console.WriteLine("Boneys consensus was that bank server N " + liderBySlot[currentSlot] + " is the new lider!");
             }
         }
 

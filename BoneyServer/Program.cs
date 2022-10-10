@@ -376,6 +376,17 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                         Console.WriteLine("ERROR :/  " + e);
                     }
                 }
+                lock (p.acceptor)
+                {
+                    Monitor.PulseAll(p.acceptor);
+                }
+            }
+            else
+            {
+                lock (p.acceptor)
+                {
+                    Monitor.Wait(p.acceptor);
+                }
             }
 
             return new LearnersReply

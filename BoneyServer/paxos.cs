@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,6 +17,7 @@ namespace BoneyServer
         private Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses;
         Dictionary<int, List<int>> status = new Dictionary<int, List<int>>();
         private Dictionary<int, int> allProposerIds = new Dictionary<int, int>();
+        int temp_counter;
 
         public Proposer(int id, Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses)
         {
@@ -25,6 +27,53 @@ namespace BoneyServer
             foreach (int boneyID in boneyAddresses.Keys)
             {
                 allProposerIds.Add(boneyID, boneyID);   
+            }
+        }
+
+        void sendPrepareRequest(BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server, List<int> lidersSeen, List<int> propValues)
+        {
+            Console.WriteLine("PROPOSERS: Sending Promisse to server! ");
+            ConsensusPromisse response;
+            try
+            {
+                response = server.Prepare(new ConsensusPrepare { Leader = proposerId });
+
+                // using this for debug
+                Console.WriteLine("PROPOSERS: We got a ConsensusPromisse");
+                lock(this){
+                    lidersSeen.Add(response.PrevAcceptedLider);
+                    propValues.Add(response.PrevAcceptedValue);
+                    if (lidersSeen.Count > amountOfNodes / 2)
+                    {
+                        Monitor.Pulse(this);
+                    }
+                }
+            }
+            catch
+            {
+                Console.WriteLine("PROPOSERS: Could not contact the server! ");
+            }
+        }
+
+        void sendAcceptRequest(BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server, int prop, List<ConsensusAcceptReply> accepts)
+        {
+            try
+            {
+                Console.WriteLine("PROPOSER: sending accept request to server");
+                var response = server.Accept(new ConsensusAcceptRequest { Leader = proposerId, Value = prop });
+                Console.WriteLine("PROPOSERS: got accept response!" + response.Leader + " " + response.Value);
+                lock (accepts)
+                {
+                    accepts.Add(response);
+                    if (accepts.Count > amountOfNodes / 2)
+                    {
+                        Monitor.Pulse(accepts);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("PROPOSERS ERROR: " + e);
             }
         }
 
@@ -70,20 +119,14 @@ namespace BoneyServer
 
             foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in boneyAddresses.Values)
             {
-                Console.WriteLine("PROPOSERS: Sending Promisse to server! ");
-                ConsensusPromisse response;
-                try
-                {
-                    response = server.Prepare(new ConsensusPrepare { Leader = proposerId });
-                    // using this for debug
-                    Console.WriteLine("PROPOSERS: We got a ConsensusPromisse");
-                    lidersSeen.Add(response.PrevAcceptedLider);
-                    propValues.Add(response.PrevAcceptedValue);
-                }
-                catch
-                {
-                    Console.WriteLine("PROPOSERS: Could not contact the server! ");
-                }
+                var threadFour = new Thread(() => sendPrepareRequest(server, lidersSeen, propValues));
+                threadFour.Start();
+            }
+
+            lock (this)
+            {
+                if(lidersSeen.Count <= amountOfNodes / 2)
+                    Monitor.Wait(this);
             }
 
             int biggestLider = -1;
@@ -100,24 +143,28 @@ namespace BoneyServer
                 idx++;
             }
 
-            int counter = 0;
+            List<ConsensusAcceptReply> accepts = new List<ConsensusAcceptReply>();
+
             foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in boneyAddresses.Values)
             {
-                try
+                var threadFour = new Thread(() => sendAcceptRequest(server, prop, accepts));
+                threadFour.Start();
+            }
+
+            lock (accepts)
+            {
+                if(accepts.Count <= amountOfNodes / 2)
+                    Monitor.Wait(accepts);
+            }
+
+            int counter = 0;
+            foreach (var acceptRep in accepts)
+            {
+                if (acceptRep.Leader == proposerId && acceptRep.Value == prop)
+                    counter += 1;
+                if (counter > amountOfNodes / 2)
                 {
-                    var response = server.Accept(new ConsensusAcceptRequest { Leader = proposerId, Value = prop }); //TO_CHANGE
-                    
-                    if (response.Leader == proposerId && response.Value == prop)
-                        counter += 1;
-                    if (counter == boneyAddresses.Count)
-                    {
-                        biggestAccepted = response.Value;
-                    }
-                    Console.WriteLine("PROPOSERS: YESSSSSSSSSSSSSSSSSSSSSSS" + response.Leader + " " + response.Value);
-                }
-                catch(Exception e)
-                {
-                    Console.WriteLine("PROPOSERS ERROR: " + e);
+                    biggestAccepted = acceptRep.Value;
                 }
             }
 
@@ -159,7 +206,7 @@ namespace BoneyServer
         }
 
         public List<int> receivedAccept(int value_to_accept, int leader, 
-            List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeServers)
+            List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyServers)
         {
 
             if (leader < lider_that_wrote || leader < biggest_lider_seen)
@@ -173,34 +220,49 @@ namespace BoneyServer
                 biggest_lider_seen = leader;
                 lider_that_wrote = leader;
                 Console.WriteLine("ACCEPTOR: Acceptor {0} sending to learners {1}", processID, value_to_accept);
-                int response = sendToLearners(activeServers, leader, value, processID);
-                Console.WriteLine("SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS");
+                List<int> learnersrep = new List<int>();
+                foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in boneyServers)
+                {
+                    var threadFour = new Thread(() => sendToLearners(learnersrep, boneyServers.Count, server, leader, value, processID));
+                    threadFour.Start();
+                }
+
+                lock (learnersrep)
+                {
+                    if(learnersrep.Count <= boneyServers.Count / 2)
+                        Monitor.Wait(learnersrep);
+                }
+
                 return returnList(biggest_lider_seen, value);
             }
         }
 
-        public int sendToLearners(List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeServers,
+        public void sendToLearners(List<int> learnersrep, int nodeN, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server,
             int leader, int value_send, int acceptorId)
         {
             Console.WriteLine("ACCEPTOR: Sending to learners.");
-            int resp = -1;
-            foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in activeServers)
+            try
             {
-                try
+                var response = server.Learner(new LearnersRequest
                 {
-                    var response = server.Learner(new LearnersRequest
+                    Leader = leader,
+                    Value = value_send,
+                    Acceptor = acceptorId
+                });
+                Console.WriteLine("Received learner response! " + response.Value);
+                lock (learnersrep)
+                {
+                    learnersrep.Add(response.Value);
+                    if (learnersrep.Count > nodeN / 2)
                     {
-                        Leader = leader,
-                        Value = value_send,
-                        Acceptor = acceptorId
-                    });
-                    resp = response.Value;
-                }catch(Exception e)
-                {
-                    Console.WriteLine("ACCEPTOR: Error sending to learners.");
+                        Monitor.PulseAll(learnersrep);
+                    }
                 }
+            }catch(Exception e)
+            {
+                Console.WriteLine("ACCEPTOR: Error sending to learners.");
             }
-            return resp;
+            
         }
 
         public void clean()
@@ -264,6 +326,7 @@ namespace BoneyServer
                 }
                 count = 0;
             }
+
             return 0;
         }
 
