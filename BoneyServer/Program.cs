@@ -246,6 +246,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             int outv_tmp;
             Console.WriteLine("Current liderHistory size --> " + p.liderHistory.Count);
             Console.WriteLine("I got a request with value " + request.Invalue + " for slot " + request.Slot + " lets get consensus!");
+            
             if (p.liderHistory.Count >= request.Slot) //Lider já foi foi consensed! Então retornar só oq está na history
             {
                 outv_tmp = p.liderHistory.ElementAt(request.Slot - 1);
@@ -253,10 +254,13 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             }
             else
             {
-                setFrozen(p.status.Values.ElementAt(request.Slot)[p.processId - 1] == 0);
-                p.Slot = request.Slot;
                 Console.WriteLine("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
+                // Yes -1 pq eu passo em lista, tu mandas logo em dicionario type stuff.
+                setFrozen(p.status.Values.ElementAt(request.Slot-1)[p.processId - 1] == 0);
+                Console.WriteLine("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
+                p.Slot = request.Slot;
                 outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot]);
+                Console.WriteLine("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
                 lock (p.proposer){
                     if (outv_tmp == -2)
                     {

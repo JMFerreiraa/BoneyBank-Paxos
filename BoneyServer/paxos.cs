@@ -89,8 +89,7 @@ namespace BoneyServer
             List<int> lidersSeen = new List<int>();
             List<int> propValues = new List<int>();
             this.boneyAddresses = boneyAddresses;
-        //TO-DO: Verificar aqui se há algum servidor com ID mais baixo que esteja ligado
-
+            //TO-DO: Verificar aqui se há algum servidor com ID mais baixo que esteja ligado
         //Iterar todos os servidores até chegar a mim
         startLabel:
             int minIdx = this.proposerId;
