@@ -17,7 +17,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         internal Acceptor acceptor;
         internal Learner learn;
 
-        int processId = -1;
+        internal int processId = -1;
         string processUrl = "";
         int currentSlot = 1;
 
@@ -33,6 +33,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         internal List<int> frozen = new List<int>();
         System.Timers.Timer aTimer = new System.Timers.Timer(2000);
         internal int timeSlot;
+        internal int Slot;
 
         public string Host
         {
@@ -235,8 +236,14 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public CompareAndSwapReply CAS(CompareAndSwapRequest request)
         {
+            //JOAOOO n tavamos a dar clear nos nao lider do boney
+            // ta feio e dps mudamos mas por agora da
+            p.learn.clean();
+            p.acceptor.clean();
+            p.learn.show();
+            p.acceptor.show();
             int outv_tmp;
-            
+            Console.WriteLine("Current liderHistory size --> " + p.liderHistory.Count);
             Console.WriteLine("I got a request with value " + request.Invalue + " for slot " + request.Slot + " lets get consensus!");
             if (p.liderHistory.Count >= request.Slot) //Lider já foi foi consensed! Então retornar só oq está na history
             {
@@ -245,6 +252,8 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             }
             else
             {
+                setFrozen(p.status.Values.ElementAt(request.Slot)[p.processId - 1] == 0);
+                p.Slot = request.Slot;
                 outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot]);
                 lock (p.proposer){
                     if (outv_tmp == -2)
@@ -268,14 +277,26 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 Console.WriteLine("I made consensus and the value consented is " + outv_tmp);
             }
             Console.WriteLine("Sending reply to server!");
-
-
+            //JOAOOOO Tamos a meter a mais na lista! dei fix la em baixo (learner) mesmo file
+            foreach (int i in p.liderHistory)
+            {
+                Console.Write(i + " ");
+            }
+            Console.WriteLine();
 
             return new CompareAndSwapReply
             {
                 Outvalue = outv_tmp
             };
-            
+
+        }
+
+        public void setFrozen(bool t)
+        {
+            Console.WriteLine("------------ " +t);
+            p.proposer.setFrozen(t);
+            p.acceptor.setFrozen(t);
+            p.learn.setFrozen(t);
         }
     }
 
@@ -319,7 +340,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         {
             List<int> reply;
 
-            //ERRADO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             lock (p.acceptor)
             {
                 Console.WriteLine("ACCEPTOR: IN " + request.Value + " from " + request.Leader);
@@ -327,17 +347,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 Console.WriteLine("ACCEPTOR: OUT " + request.Value + " from " + request.Leader);
             }
 
-            lock (p.proposer)
-            {
-                try
-                {
-                    //Monitor.PulseAll(p.proposer);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("ERROR :/  " + e);
-                }
-            }
             Console.WriteLine("Reply = " + reply[0] + " " + reply[1]);
             return new ConsensusAcceptReply
             {
@@ -365,7 +374,17 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
             if (accepted != 0)
             {
-                p.liderHistory.Add(accepted);
+                lock(p.liderHistory)
+                {
+                    Console.WriteLine("{0} < {1}", p.Slot, p.liderHistory.Count);
+                    if (p.Slot > p.liderHistory.Count)
+                    {
+                        p.liderHistory.Add(accepted);
+                        //JOAOOOOO isto da fix para o primeiro paxos, para manter a lista bem
+                        // temos de aumentar o slot no bank server (ainda n ta a fazer);
+                    }
+                }
+
                 lock (p.proposer)
                 {
                     try

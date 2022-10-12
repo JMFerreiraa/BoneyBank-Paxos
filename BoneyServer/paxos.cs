@@ -18,6 +18,7 @@ namespace BoneyServer
         Dictionary<int, List<int>> status = new Dictionary<int, List<int>>();
         private Dictionary<int, int> allProposerIds = new Dictionary<int, int>();
         int temp_counter;
+        internal bool frozen;
 
         public Proposer(int id, Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses)
         {
@@ -28,6 +29,11 @@ namespace BoneyServer
             {
                 allProposerIds.Add(boneyID, boneyID);   
             }
+        }
+
+        public void setFrozen(bool t)
+        {
+            frozen = t;
         }
 
         void sendPrepareRequest(BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server, List<int> lidersSeen, List<int> propValues)
@@ -180,15 +186,25 @@ namespace BoneyServer
         private int biggest_lider_seen = -1;
         private int lider_that_wrote = -1;
         private int processID;
+        internal bool frozen;
 
         public Acceptor(int processId)
         {
             processID = processId;
         }
 
+        public void setFrozen(bool t)
+        {
+            frozen = t;
+        }
+
         // what will it send?  < Bool (0,1) if success, int saying biggest seen if bool negative, value>
         public List<int> recievedProposel(int lider)
         {
+            if (frozen)
+            {
+                Console.WriteLine("FREEEEEEZZEEEEEE");
+            }
             Console.WriteLine("ACCEPTOR: Acceptor recieved a proposel.");
             if(!(lider < lider_that_wrote || lider < biggest_lider_seen))
             {
@@ -286,6 +302,7 @@ namespace BoneyServer
         private List<int> values_received = new List<int>();
         private int number_of_servers;
         private int biggestLeaderSeen = -1;
+        internal bool frozen;
         public Learner(int size)
         {
             number_of_servers = size;
@@ -293,6 +310,11 @@ namespace BoneyServer
             {
                 values_received.Add(-1);
             }
+        }
+
+        public void setFrozen(bool t)
+        {
+            frozen = t;
         }
 
         public int receivedLearner(int value_sent, int leader, int acceptor,
