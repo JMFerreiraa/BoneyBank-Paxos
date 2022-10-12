@@ -89,7 +89,7 @@ namespace PuppetMaster
             while (true)
             {
                 Console.WriteLine("Write exit to exit!");
-                if (Console.ReadLine() == "exit")
+                if (Console.ReadLine().ToLower() == "exit")
                     break;
             }
             foreach (Process proce in processesList)

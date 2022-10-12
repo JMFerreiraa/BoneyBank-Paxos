@@ -238,6 +238,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         {
             //JOAOOO n tavamos a dar clear nos nao lider do boney
             // ta feio e dps mudamos mas por agora da
+            Console.WriteLine("###################### STARTING CONSENSUS ######################");
             p.learn.clean();
             p.acceptor.clean();
             p.learn.show();
@@ -254,6 +255,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             {
                 setFrozen(p.status.Values.ElementAt(request.Slot)[p.processId - 1] == 0);
                 p.Slot = request.Slot;
+                Console.WriteLine("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
                 outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot]);
                 lock (p.proposer){
                     if (outv_tmp == -2)
@@ -338,14 +340,13 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public ConsensusAcceptReply Acc(ConsensusAcceptRequest request)
         {
-            List<int> reply;
+            List<int> reply = new List<int>();
+            
+            Console.WriteLine("SEEEEEEEEEEEEEEEEEXXXXXXXXXXXXXXXXXXXXYYYYYYYYYYYYYYYYYYYY LADY (joao)");
 
-            lock (p.acceptor)
-            {
-                Console.WriteLine("ACCEPTOR: IN " + request.Value + " from " + request.Leader);
-                reply = p.acceptor.receivedAccept(request.Value, request.Leader, p.boneysAddresses.Values.ToList());
-                Console.WriteLine("ACCEPTOR: OUT " + request.Value + " from " + request.Leader);
-            }
+            Console.WriteLine("ACCEPTOR: IN " + request.Value + " from " + request.Leader);
+            reply = p.acceptor.receivedAccept(request.Value, request.Leader, p.boneysAddresses.Values.ToList());
+            Console.WriteLine("ACCEPTOR: OUT " + request.Value + " from " + request.Leader);
 
             Console.WriteLine("Reply = " + reply[0] + " " + reply[1]);
             return new ConsensusAcceptReply
@@ -376,7 +377,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             {
                 lock(p.liderHistory)
                 {
-                    Console.WriteLine("{0} < {1}", p.Slot, p.liderHistory.Count);
                     if (p.Slot > p.liderHistory.Count)
                     {
                         p.liderHistory.Add(accepted);

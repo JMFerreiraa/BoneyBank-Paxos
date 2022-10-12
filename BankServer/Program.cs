@@ -336,7 +336,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             //TO-DO: O que acontece se estiver frozen e ninguem suspeita q está?
 
             int proposed = -1;
-            
+            int slot = currentSlot;
 
             foreach(int server in serversAddresses.Keys)
             {
@@ -353,7 +353,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             if (aTimer.Enabled)
             {
-                Console.WriteLine("I WILL START");
+                Console.WriteLine("I WILL START FOR SLOT {0}!", currentSlot);
                 aTimer.Start();
             }
             Random random = new Random();
@@ -371,6 +371,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
             {
                 Monitor.Wait(this);
                 Console.WriteLine("Boneys consensus was that bank server N " + liderBySlot[currentSlot] + " is the new lider!");
+            }
+            //Just in case of threads in the future
+            lock (this)
+            {
+                currentSlot = slot + 1;
             }
         }
 

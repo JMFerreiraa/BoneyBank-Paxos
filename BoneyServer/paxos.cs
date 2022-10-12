@@ -159,10 +159,11 @@ namespace BoneyServer
 
             lock (accepts)
             {
+                Console.WriteLine("ALALLALALALALALALALALALALALALALALALALALALALALALALALALALL");
                 if(accepts.Count <= amountOfNodes / 2)
                     Monitor.Wait(accepts);
             }
-
+            Console.WriteLine("LOLOOOLLOLLOLOLOLOLOLLOLOOLOLLOOLOLOLLOOLLOOLLOOLLOLOL");
             int counter = 0;
             foreach (var acceptRep in accepts)
             {
