@@ -5,6 +5,7 @@ using System.Diagnostics;
 using static boneyServer.BoneyBankService;
 using static boneyServer.Program;
 using Grpc.Net.Client;
+using System.Timers;
 
 namespace boneyServer // Note: actual namespace depends on the project name.
 {
@@ -19,7 +20,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         internal int processId = -1;
         string processUrl = "";
-        int currentSlot = 1;
+        int currentSlot = 0;
 
         internal Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient> serversAddresses = new Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient>();
         internal Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneysAddresses = new Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient>();
@@ -169,19 +170,42 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             }
         }
 
-        public List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> getActiveBoneys()
+        public void startTimer()
         {
-            List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> activeBoneys = new List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient>();
-            foreach (int boney in boneysAddresses.Keys)
-            {
-                if (status[liderHistory.Count + 1][boney - 1] == 1)
-                {
-                    activeBoneys.Add(boneysAddresses[boney]);
-                }
-            }
-            return activeBoneys;
+            Console.WriteLine("Timer will be started.");
+            TimeSpan day = new TimeSpan(24, 00, 00);    // 24 hours in a day.
+            TimeSpan now = TimeSpan.Parse(DateTime.Now.ToString("HH:mm:ss"));     // The current time in 24 hour format
+            TimeSpan activationTime = new TimeSpan(Int32.Parse(timeToStart.Split(":").ElementAt(0)), Int32.Parse(timeToStart.Split(":").ElementAt(1)), Int32.Parse(timeToStart.Split(":").ElementAt(2)));    // 4 AM
+
+            TimeSpan timeLeftUntilFirstRun = ((day - now) + activationTime);
+            if (timeLeftUntilFirstRun.TotalHours > 24)
+                timeLeftUntilFirstRun -= new TimeSpan(24, 0, 0);    // Deducts a day from the schedule so it will run today.
+
+            System.Timers.Timer execute = new System.Timers.Timer();
+            execute.Interval = timeLeftUntilFirstRun.TotalMilliseconds;
+            execute.Elapsed += advanceSlot;    // Event to do your tasks.
+            execute.AutoReset = false;
+            execute.Start();
+
+            Console.WriteLine(now.ToString());
+            Console.WriteLine(activationTime.ToString());
+
+            aTimer = new System.Timers.Timer(slotTime * 1000 - 1);
+            aTimer.Elapsed += advanceSlot;
+            aTimer.AutoReset = false;
         }
 
+        public void advanceSlot(object sender, ElapsedEventArgs e)
+        {
+            currentSlot += 1;
+            Console.WriteLine("CURRENT SLOT = " + currentSlot);
+            if (currentSlot != numberOfSlots)
+            {
+                aTimer.Interval = slotTime * 1000;
+                aTimer.Start();
+            }
+
+        }
         static void Main(string[] args)
         {
             if (args.Length != 1)
@@ -203,6 +227,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 Ports = { new ServerPort("localhost", p.Port, ServerCredentials.Insecure) }
             };
             server.Start();
+            p.startTimer();
             while (true)
             {
                 string command = Console.ReadLine();
@@ -299,7 +324,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public void setFrozen(bool t)
         {
-            Console.WriteLine("------------ " +t);
             p.proposer.setFrozen(t);
             p.acceptor.setFrozen(t);
             p.learn.setFrozen(t);
