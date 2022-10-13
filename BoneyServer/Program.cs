@@ -346,8 +346,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         {
             List<int> reply = new List<int>();
             
-            Console.WriteLine("SEEEEEEEEEEEEEEEEEXXXXXXXXXXXXXXXXXXXXYYYYYYYYYYYYYYYYYYYY LADY (joao)");
-
             Console.WriteLine("ACCEPTOR: IN " + request.Value + " from " + request.Leader);
             reply = p.acceptor.receivedAccept(request.Value, request.Leader, p.boneysAddresses.Values.ToList());
             Console.WriteLine("ACCEPTOR: OUT " + request.Value + " from " + request.Leader);

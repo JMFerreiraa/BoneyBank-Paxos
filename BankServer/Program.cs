@@ -377,6 +377,14 @@ namespace BankServer // Note: actual namespace depends on the project name.
             {
                 currentSlot = slot + 1;
             }
+
+            //Chegou ao fim!
+            if (currentSlot > numberOfSlots)
+            {
+                while(true)
+                    if(Console.ReadLine().ToLower() == "exit")
+                        Environment.Exit(1);
+            }
         }
 
         static void Main(string[] args)
