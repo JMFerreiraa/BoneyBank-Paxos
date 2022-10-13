@@ -73,7 +73,7 @@ namespace BoneyServer
                     accepts.Add(response);
                     if (accepts.Count > amountOfNodes / 2)
                     {
-                        Monitor.Pulse(accepts);
+                        Monitor.PulseAll(accepts);
                     }
                 }
             }
@@ -156,13 +156,13 @@ namespace BoneyServer
                 threadFour.Start();
             }
 
+            Console.WriteLine("IM GETTING STUCK STEP BRO!");
             lock (accepts)
             {
-                Console.WriteLine("ALALLALALALALALALALALALALALALALALALALALALALALALALALALALL");
                 if(accepts.Count <= amountOfNodes / 2)
                     Monitor.Wait(accepts);
             }
-            Console.WriteLine("LOLOOOLLOLLOLOLOLOLOLLOLOOLOLLOOLOLOLLOOLLOOLLOOLLOLOL");
+            Console.WriteLine("THX FOR THE HELP STEP BRO");
             int counter = 0;
             foreach (var acceptRep in accepts)
             {
@@ -345,11 +345,12 @@ namespace BoneyServer
                 {
                     //send_msg_to_server(serversAddresses, e);
                     //Clean learners function.
+                    Console.WriteLine("LEARNER:: returning that learner got " + e);
                     return e;
                 }
                 count = 0;
             }
-
+            Console.WriteLine("LEARNER:: I AM NOT THE FINAL RESULT YET");
             return 0;
         }
 

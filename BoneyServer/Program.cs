@@ -11,6 +11,8 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 {
     internal class Program
     {
+
+        internal Object lockOb = new Object();
         internal List<int> liderHistory = new List<int>();
         private string host;
         private int port;
@@ -195,8 +197,16 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             aTimer.AutoReset = false;
         }
 
+        public void setFrozen(bool t)
+        {
+            proposer.setFrozen(t);
+            acceptor.setFrozen(t);
+            learn.setFrozen(t);
+        }
+
         public void advanceSlot(object sender, ElapsedEventArgs e)
         {
+            bool wasFrozen = proposer.frozen;
             currentSlot += 1;
             Console.WriteLine("CURRENT SLOT = " + currentSlot);
             if (currentSlot != numberOfSlots)
@@ -204,8 +214,18 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 aTimer.Interval = slotTime * 1000;
                 aTimer.Start();
             }
-
+            setFrozen(frozen[currentSlot - 1] == 0);
+            Console.WriteLine("I WAS FROZEN? " + wasFrozen);
+            Console.WriteLine("AM I STILL FROZEN? " + proposer.frozen);
+            lock (lockOb)
+            {
+                if (wasFrozen == true && proposer.frozen == false)
+                {
+                    Monitor.PulseAll(lockOb);
+                }
+            }
         }
+
         static void Main(string[] args)
         {
             if (args.Length != 1)
@@ -261,6 +281,14 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public CompareAndSwapReply CAS(CompareAndSwapRequest request)
         {
+            lock (p.lockOb)
+            {
+                if (p.acceptor.frozen)
+                {
+                    Monitor.Wait(p.lockOb);
+                }
+            }
+
             //JOAOOO n tavamos a dar clear nos nao lider do boney
             // ta feio e dps mudamos mas por agora da
             Console.WriteLine("###################### STARTING CONSENSUS ######################");
@@ -279,13 +307,19 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             }
             else
             {
-                Console.WriteLine("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
                 // Yes -1 pq eu passo em lista, tu mandas logo em dicionario type stuff.
-                setFrozen(p.status.Values.ElementAt(request.Slot-1)[p.processId - 1] == 0);
-                Console.WriteLine("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
+
+                foreach (List<int> i in p.status.Values)
+                {
+                    foreach (int e in i )
+                    {
+                        Console.Write(e + " ");
+                    }
+                    Console.WriteLine();
+                }
+
                 p.Slot = request.Slot;
                 outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot]);
-                Console.WriteLine("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
                 lock (p.proposer){
                     if (outv_tmp == -2)
                     {
@@ -307,7 +341,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 }
                 Console.WriteLine("I made consensus and the value consented is " + outv_tmp);
             }
-            Console.WriteLine("Sending reply to server!");
+            Console.WriteLine("sending reply to server!");
             //JOAOOOO Tamos a meter a mais na lista! dei fix la em baixo (learner) mesmo file
             foreach (int i in p.liderHistory)
             {
@@ -322,12 +356,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         }
 
-        public void setFrozen(bool t)
-        {
-            p.proposer.setFrozen(t);
-            p.acceptor.setFrozen(t);
-            p.learn.setFrozen(t);
-        }
+
     }
 
     internal class BoneyBoneyService : BoneyBoneyCommunications.BoneyBoneyCommunicationsBase
@@ -347,11 +376,19 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public ConsensusPromisse Pr(ConsensusPrepare request)
         {
-            if (p.acceptor.frozen)
-            {
 
-            }
             Console.WriteLine("I got a prepare from " + request.Leader + "!");
+
+
+            lock (p.lockOb)
+            {
+                if (p.acceptor.frozen)
+                {
+                    Monitor.Wait(p.lockOb);
+                }
+            }
+
+            Console.WriteLine("NÃO FIQUEI LOCKET PK N SOU RETARDADO!");
             List<int> reply;
 
 
@@ -374,6 +411,16 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public ConsensusAcceptReply Acc(ConsensusAcceptRequest request)
         {
+
+            
+            lock (p.lockOb)
+            {
+                if (p.acceptor.frozen)
+                {
+                    Monitor.Wait(p.lockOb);
+                }
+            }
+
             List<int> reply = new List<int>();
             
             Console.WriteLine("ACCEPTOR: IN " + request.Value + " from " + request.Leader);
@@ -381,6 +428,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             Console.WriteLine("ACCEPTOR: OUT " + request.Value + " from " + request.Leader);
 
             Console.WriteLine("Reply = " + reply[0] + " " + reply[1]);
+            Console.WriteLine("KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK");
             return new ConsensusAcceptReply
             {
                 Leader = reply[0],
@@ -397,6 +445,15 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public LearnersReply Lea(LearnersRequest request)
         {
+
+            lock (p.lockOb)
+            {
+                if (p.acceptor.frozen)
+                {
+                    Monitor.Wait(p.lockOb);
+                }
+            }
+
             int accepted;
             object obj = new object();
             lock (p.learn)
@@ -416,7 +473,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                         // temos de aumentar o slot no bank server (ainda n ta a fazer);
                     }
                 }
-
+                
                 lock (p.proposer)
                 {
                     try
@@ -428,8 +485,10 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                         Console.WriteLine("ERROR :/  " + e);
                     }
                 }
+                
                 lock (obj)
                 {
+                    Console.WriteLine("LEARNERS -- PULSING ALL WAITING LEARNERS!");
                     Monitor.PulseAll(obj);
                 }
             }
@@ -437,9 +496,16 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             {
                 lock (obj)
                 {
-                    Monitor.Wait(obj);
+                    if (p.liderHistory.Count < p.Slot)
+                    {
+                        Console.WriteLine("LEARNERS -- SHARKS DO NOT LIKE O2 1");
+                        Monitor.Wait(obj);
+                        Console.WriteLine("LEARNERS -- SHARKS DO NOT LIKE O2 2");
+                    }
                 }
             }
+
+            
 
             return new LearnersReply
             {
