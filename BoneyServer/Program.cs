@@ -323,8 +323,14 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         public ConsensusPromisse Pr(ConsensusPrepare request)
         {
+            if (p.acceptor.frozen)
+            {
+
+            }
             Console.WriteLine("I got a prepare from " + request.Leader + "!");
             List<int> reply;
+
+
             lock (p.proposer)
             {
                 reply = p.acceptor.recievedProposel(request.Leader);

@@ -140,7 +140,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
     {
         int processId = -1;
         string processUrl = "";
-        int currentSlot = 1;
+        int currentSlot = 0;
 
         private Dictionary<int, string> clientsAddresses = new Dictionary<int, string>();
         private Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
@@ -283,8 +283,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
         {
             Console.WriteLine("Timer will be started.");
             TimeSpan day = new TimeSpan(24, 00, 00);    // 24 hours in a day.
-            TimeSpan now = TimeSpan.Parse(DateTime.Now.ToString("HH:mm"));     // The current time in 24 hour format
-            TimeSpan activationTime = new TimeSpan(20, 16, 50);    // 4 AM
+            TimeSpan now = TimeSpan.Parse(DateTime.Now.ToString("HH:mm:ss"));     // The current time in 24 hour format
+            TimeSpan activationTime = new TimeSpan(Int32.Parse(timeToStart.Split(":").ElementAt(0)), Int32.Parse(timeToStart.Split(":").ElementAt(1)), Int32.Parse(timeToStart.Split(":").ElementAt(2)));    // 4 AM
 
             TimeSpan timeLeftUntilFirstRun = ((day - now) + activationTime);
             if (timeLeftUntilFirstRun.TotalHours > 24)
@@ -296,10 +296,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
             execute.AutoReset = false;
             execute.Start();
 
-            aTimer = new System.Timers.Timer(15000);
+            Console.WriteLine(now.ToString());
+            Console.WriteLine(activationTime.ToString());
+
+            aTimer = new System.Timers.Timer(slotTime*1000);
             aTimer.Elapsed += findLider;
-            aTimer.AutoReset = true;
-            aTimer.Enabled = true;
+            aTimer.AutoReset = false;
+            
         }
 
         void sendToServer(int proposed, string targetBoneyAddress)
@@ -317,12 +320,15 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
                 Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue);
 
+                
                 lock (this)
                 {
-                    if(!liderBySlot.ContainsKey(currentSlot))
+                    if (!liderBySlot.ContainsKey(currentSlot))
                         liderBySlot.Add(currentSlot, reply.Outvalue);
+
                     Monitor.Pulse(this);
                 }
+                Console.WriteLine("value slot = " + currentSlot);
             }
             catch (Exception ex)
             {
@@ -334,11 +340,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
             // Do your stuff and recalculate the timer interval and reset the Timer.
 
             //TO-DO: O que acontece se estiver frozen e ninguem suspeita q está?
+            
 
             int proposed = -1;
             int slot = currentSlot;
+            currentSlot = slot + 1;
 
-            foreach(int server in serversAddresses.Keys)
+            foreach (int server in serversAddresses.Keys)
             {
                 if (status[currentSlot].ElementAt(server - 1) == 1)
                 {
@@ -351,13 +359,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
             Console.WriteLine("Leader round number: " + counter);
             Console.WriteLine(DateTime.Now.ToString("HH:mm:ss"));
 
-            if (aTimer.Enabled)
-            {
-                Console.WriteLine("I WILL START FOR SLOT {0}!", currentSlot);
-                aTimer.Start();
-            }
-            Random random = new Random();
-            int randomNumber1 = random.Next(boneysAddresses.Keys.ElementAt(0), boneysAddresses.Keys.ElementAt(0) + boneysAddresses.Count());
+            Console.WriteLine("I WILL START FOR SLOT {0}!", currentSlot);
+            aTimer.Start();
 
             Console.WriteLine("I am proposing server " + proposed + " To be the lider!");
 
@@ -372,12 +375,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 Monitor.Wait(this);
                 Console.WriteLine("Boneys consensus was that bank server N " + liderBySlot[currentSlot] + " is the new lider!");
             }
-            //Just in case of threads in the future
-            lock (this)
-            {
-                currentSlot = slot + 1;
-            }
-
             //Chegou ao fim!
             if (currentSlot > numberOfSlots)
             {
