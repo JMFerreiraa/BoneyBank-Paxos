@@ -291,7 +291,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 timeLeftUntilFirstRun -= new TimeSpan(24, 0, 0);    // Deducts a day from the schedule so it will run today.
 
             System.Timers.Timer execute = new System.Timers.Timer();
-            execute.Interval = timeLeftUntilFirstRun.TotalMilliseconds;
+            execute.Interval = 1000; //timeLeftUntilFirstRun.TotalMilliseconds
             execute.Elapsed += findLider;    // Event to do your tasks.
             execute.AutoReset = false;
             execute.Start();
