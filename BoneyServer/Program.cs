@@ -37,6 +37,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         System.Timers.Timer aTimer = new System.Timers.Timer(2000);
         internal int timeSlot;
         internal int Slot;
+        internal object obj = new object();
 
         public string Host
         {
@@ -192,7 +193,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             Console.WriteLine(now.ToString());
             Console.WriteLine(activationTime.ToString());
 
-            aTimer = new System.Timers.Timer(slotTime * 1000 - 1);
+            aTimer = new System.Timers.Timer(slotTime * 1000 - 1000);
             aTimer.Elapsed += advanceSlot;
             aTimer.AutoReset = false;
         }
@@ -325,7 +326,8 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                     {
                         //N sou o lider --> Ficar a espera do consensus de outros processos bloqueada!
                         Console.WriteLine("Getting locked :(");
-                        Monitor.Wait(p.proposer);
+                        if (p.liderHistory.Count < request.Slot)
+                            Monitor.Wait(p.proposer);
                         Console.WriteLine("Leaving Lock!");
                         outv_tmp = p.liderHistory.ElementAt(request.Slot - 1);
                         Console.WriteLine("Already consensed in the past! We got value " + outv_tmp);
@@ -455,7 +457,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             }
 
             int accepted;
-            object obj = new object();
+            
             lock (p.learn)
             {
                 accepted = p.learn.receivedLearner(request.Value, request.Leader, 
@@ -486,21 +488,21 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                     }
                 }
                 
-                lock (obj)
+                lock (p.obj)
                 {
                     Console.WriteLine("LEARNERS -- PULSING ALL WAITING LEARNERS!");
-                    Monitor.PulseAll(obj);
+                    Monitor.PulseAll(p.obj);
                 }
             }
             else
             {
-                lock (obj)
+                lock (p.obj)
                 {
                     if (p.liderHistory.Count < p.Slot)
                     {
-                        Console.WriteLine("LEARNERS -- SHARKS DO NOT LIKE O2 1");
-                        Monitor.Wait(obj);
-                        Console.WriteLine("LEARNERS -- SHARKS DO NOT LIKE O2 2");
+                        Console.WriteLine("LEARNERS -- SHARKS DO NOT LIKE O1");
+                        Monitor.Wait(p.obj);
+                        Console.WriteLine("LEARNERS -- SHARKS DO NOT LIKE O2");
                     }
                 }
             }

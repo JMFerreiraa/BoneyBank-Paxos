@@ -315,7 +315,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
                 var reply = client.CompareAndSwap(new CompareAndSwapRequest
                         { Slot = currentSlot, Invalue = proposed },
-                    deadline: DateTime.UtcNow.AddSeconds(10));
+                    deadline: DateTime.UtcNow.AddSeconds(20));
 
                 Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue);
 
@@ -331,7 +331,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
             catch (Exception ex)
             {
-                Console.WriteLine("We got an error! :( + " + ex);
+                Console.WriteLine("Server could not be contacted! " + targetBoneyAddress);
             }
         }
         public void findLider(object sender, ElapsedEventArgs e)

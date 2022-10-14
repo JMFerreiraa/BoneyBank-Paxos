@@ -265,7 +265,6 @@ namespace BoneyServer
                     Value = value_send,
                     Acceptor = acceptorId
                 });
-                Console.WriteLine("PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP");
                 Console.WriteLine("Received learner response! " + response.Value);
                 lock (learnersrep)
                 {
@@ -336,7 +335,7 @@ namespace BoneyServer
                 int count = 0;
                 foreach(int i in values_received)
                 {
-                    if(i == e && e > 0)
+                    if(i == e && e == value_sent)
                     {
                         count++;
                     }
