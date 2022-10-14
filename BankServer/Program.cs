@@ -306,6 +306,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         void sendToServer(int proposed, string targetBoneyAddress)
         {
+            int slotToSend = this.currentSlot;
             try
             {
                 GrpcChannel channel;
@@ -317,7 +318,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         { Slot = currentSlot, Invalue = proposed },
                     deadline: DateTime.UtcNow.AddSeconds(20));
 
-                Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue);
+                Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue + " for slot=" + slotToSend);
 
                 
                 lock (this)

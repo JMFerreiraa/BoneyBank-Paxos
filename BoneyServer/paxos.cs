@@ -61,12 +61,12 @@ namespace BoneyServer
             }
         }
 
-        void sendAcceptRequest(BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server, int prop, List<ConsensusAcceptReply> accepts)
+        void sendAcceptRequest(BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server, int prop, List<ConsensusAcceptReply> accepts, int slot)
         {
             try
             {
                 Console.WriteLine("PROPOSER: sending accept request to server");
-                var response = server.Accept(new ConsensusAcceptRequest { Leader = proposerId, Value = prop });
+                var response = server.Accept(new ConsensusAcceptRequest { Leader = proposerId, Value = prop, Slot  = slot});
                 Console.WriteLine("PROPOSERS: got accept response!" + response.Leader + " " + response.Value);
                 lock (accepts)
                 {
@@ -83,7 +83,7 @@ namespace BoneyServer
             }
         }
 
-        public int processProposal(int prop, Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses, List<int> status)
+        public int processProposal(int prop, Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses, List<int> status, int currSlot)
         {
             
             List<int> lidersSeen = new List<int>();
@@ -152,7 +152,7 @@ namespace BoneyServer
 
             foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in boneyAddresses.Values)
             {
-                var threadFour = new Thread(() => sendAcceptRequest(server, prop, accepts));
+                var threadFour = new Thread(() => sendAcceptRequest(server, prop, accepts, currSlot));
                 threadFour.Start();
             }
 
@@ -222,7 +222,7 @@ namespace BoneyServer
         }
 
         public List<int> receivedAccept(int value_to_accept, int leader, 
-            List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyServers)
+            List<BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyServers, int currSlot)
         {
 
             if (leader < lider_that_wrote || leader < biggest_lider_seen)
@@ -239,7 +239,7 @@ namespace BoneyServer
                 List<int> learnersrep = new List<int>();
                 foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in boneyServers)
                 {
-                    var threadFour = new Thread(() => sendToLearners(learnersrep, boneyServers.Count, server, leader, value, processID));
+                    var threadFour = new Thread(() => sendToLearners(learnersrep, boneyServers.Count, server, leader, value, processID, currSlot));
                     threadFour.Start();
                 }
 
@@ -254,18 +254,19 @@ namespace BoneyServer
         }
 
         public void sendToLearners(List<int> learnersrep, int nodeN, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server,
-            int leader, int value_send, int acceptorId)
+            int leader, int value_send, int acceptorId, int currSlot)
         {
-            Console.WriteLine("ACCEPTOR: Sending to learners.");
+            Console.WriteLine("ACCEPTOR slot = " + currSlot + " : Sending to learners.");
             try
             {
                 var response = server.Learner(new LearnersRequest
                 {
                     Leader = leader,
                     Value = value_send,
-                    Acceptor = acceptorId
+                    Acceptor = acceptorId,
+                    Slot = currSlot
                 });
-                Console.WriteLine("Received learner response! " + response.Value);
+                Console.WriteLine("ACCEPTOR slot = " + currSlot + " :Received learner response! " + response.Value);
                 lock (learnersrep)
                 {
                     learnersrep.Add(response.Value);
@@ -302,12 +303,20 @@ namespace BoneyServer
         private int number_of_servers;
         private int biggestLeaderSeen = -1;
         internal bool frozen;
+        Dictionary<int, List<int>> dic = new Dictionary<int, List<int>>();
+
+
         public Learner(int size)
         {
             number_of_servers = size;
-            for(int i = 0; i < size; i++)
+            for (int i = 1; i <= 3; i++) //CHANGE 3 TO NUMBER OF SLOTS!
             {
-                values_received.Add(-1);
+                List<int> tmp = new List<int>();
+                for (int e = 0; e < size; e++)
+                {
+                    tmp.Add(-1);
+                }
+                dic.Add(i, tmp);
             }
         }
 
@@ -318,22 +327,24 @@ namespace BoneyServer
 
         public int receivedLearner(int value_sent, int leader, int acceptor,
             Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneysAddresses,
-            Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient> serversAddresses
+            Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient> serversAddresses,
+            int currSlot
             /*, server address para mandar msg para o client */)
         {
             // Leader - 3(n servers, we get their id)
 
-            Console.WriteLine("LEARNER: Welcome to the gulag, learners only may survive! Acceptor: {0}", acceptor);
+            Console.WriteLine("LEARNER slot " + currSlot + ": Welcome to the gulag, learners only may survive! Acceptor: {0}", acceptor);
 
             biggestLeaderSeen = leader;
-            values_received[acceptor -1] = value_sent;
+            //values_received[acceptor -1] = value_sent;
+            //show(currSlot);
+            dic[currSlot][acceptor -1] = value_sent;
+            universal_show();
 
-            show();
-
-            foreach (int e in values_received)
+            foreach (int e in dic[currSlot])
             {
                 int count = 0;
-                foreach(int i in values_received)
+                foreach(int i in dic[currSlot])
                 {
                     if(i == e && e == value_sent)
                     {
@@ -369,23 +380,30 @@ namespace BoneyServer
 
         }
 
-        public void show()
+        public void show(int slot)
         {
-            Console.WriteLine("LEARNER:");
-            foreach (int i in values_received)
+            Console.WriteLine("LEARNER: ");
+            foreach(int i in dic[slot])
             {
-                Console.Write(i.ToString() + " ");
+                Console.Write(i + " ");
             }
             Console.WriteLine();
         }
 
-        public void clean()
+        public void universal_show()
         {
-            values_received.Clear();
-            for (int i = 0; i < number_of_servers; i++)
+            string s = "";
+            s += "LEARNER: \r\n";
+            foreach(int i in dic.Keys)
             {
-                values_received.Add(-1);
+                s += " Slot" + i;
+                foreach (int e in dic[i])
+                {
+                    s += "  " + e + " ";
+                }
+                s += "\r\n";
             }
+            Console.WriteLine(s);
         }
     }
 }

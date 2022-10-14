@@ -19,6 +19,7 @@ message ConsensusPromisse{
 message ConsensusAcceptRequest{
 	int32 leader = 1;
 	int32 value = 2;
+	int32 slot = 3;
 }
 
 message ConsensusAcceptReply{
@@ -30,6 +31,7 @@ message LearnersRequest{
 	int32 leader = 1;
 	int32 value = 2;
 	int32 acceptor = 3;
+	int32 slot = 4;
 }
 
 message LearnersReply{

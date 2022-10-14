@@ -51,6 +51,13 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             set { port = value; }
         }
 
+        public void fillList()
+        {
+            for(int i = 0; i < numberOfSlots; i++)
+            {
+                liderHistory.Add(-1);
+            }
+        }
 
         public void parseConfigFile()
         {
@@ -237,6 +244,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             Program p = new Program();
             p.processId = Int32.Parse(args[0]);
             p.parseConfigFile();
+            p.fillList();
             p.proposer = new Proposer(p.processId, p.boneysAddresses);
             p.learn = new Learner(p.boneysAddresses.Count);
             p.acceptor = new Acceptor(p.processId);
@@ -293,15 +301,11 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             //JOAOOO n tavamos a dar clear nos nao lider do boney
             // ta feio e dps mudamos mas por agora da
             Console.WriteLine("###################### STARTING CONSENSUS ######################");
-            p.learn.clean();
-            p.acceptor.clean();
-            p.learn.show();
-            p.acceptor.show();
             int outv_tmp;
             Console.WriteLine("Current liderHistory size --> " + p.liderHistory.Count);
             Console.WriteLine("I got a request with value " + request.Invalue + " for slot " + request.Slot + " lets get consensus!");
             
-            if (p.liderHistory.Count >= request.Slot) //Lider já foi foi consensed! Então retornar só oq está na history
+            if (p.liderHistory[request.Slot - 1] != -1) //Lider já foi foi consensed! Então retornar só oq está na history
             {
                 outv_tmp = p.liderHistory.ElementAt(request.Slot - 1);
                 Console.WriteLine("This slot was already consensed in the past! We got value " + outv_tmp);
@@ -320,28 +324,21 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 }
 
                 p.Slot = request.Slot;
-                outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot]);
+                outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot], p.Slot);
                 lock (p.proposer){
                     if (outv_tmp == -2)
                     {
                         //N sou o lider --> Ficar a espera do consensus de outros processos bloqueada!
                         Console.WriteLine("Getting locked :(");
-                        if (p.liderHistory.Count < request.Slot)
+
+                        while (p.liderHistory[request.Slot - 1] == -1)
                             Monitor.Wait(p.proposer);
                         Console.WriteLine("Leaving Lock!");
                         outv_tmp = p.liderHistory.ElementAt(request.Slot - 1);
-                        Console.WriteLine("Already consensed in the past! We got value " + outv_tmp);
-                    }
-                    else
-                    {
-                        //Clear the classes for a new paxos cycle;
-                        p.learn.clean();
-                        p.acceptor.clean();
-                        p.learn.show();
-                        p.acceptor.show();
+                        Console.WriteLine("Already consensed in the past! We got value=" + outv_tmp + " for slot=" + request.Slot);
                     }
                 }
-                Console.WriteLine("I made consensus and the value consented is " + outv_tmp);
+                Console.WriteLine("I made consensus and the value consented is=" + outv_tmp + " for slot=" + request.Slot);
             }
             Console.WriteLine("sending reply to server!");
             //JOAOOOO Tamos a meter a mais na lista! dei fix la em baixo (learner) mesmo file
@@ -426,11 +423,10 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             List<int> reply = new List<int>();
             
             Console.WriteLine("ACCEPTOR: IN " + request.Value + " from " + request.Leader);
-            reply = p.acceptor.receivedAccept(request.Value, request.Leader, p.boneysAddresses.Values.ToList());
+            reply = p.acceptor.receivedAccept(request.Value, request.Leader, p.boneysAddresses.Values.ToList(), request.Slot);
             Console.WriteLine("ACCEPTOR: OUT " + request.Value + " from " + request.Leader);
 
             Console.WriteLine("Reply = " + reply[0] + " " + reply[1]);
-            Console.WriteLine("KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK");
             return new ConsensusAcceptReply
             {
                 Leader = reply[0],
@@ -461,19 +457,21 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             lock (p.learn)
             {
                 accepted = p.learn.receivedLearner(request.Value, request.Leader, 
-                    request.Acceptor, p.boneysAddresses, p.serversAddresses);
+                    request.Acceptor, p.boneysAddresses, p.serversAddresses, request.Slot);
             }
 
             if (accepted != 0)
             {
                 lock(p.liderHistory)
                 {
+                    /*
                     if (p.Slot > p.liderHistory.Count)
                     {
                         p.liderHistory.Add(accepted);
                         //JOAOOOOO isto da fix para o primeiro paxos, para manter a lista bem
                         // temos de aumentar o slot no bank server (ainda n ta a fazer);
-                    }
+                    }*/
+                    p.liderHistory[request.Slot - 1] = accepted;
                 }
                 
                 lock (p.proposer)
@@ -498,7 +496,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             {
                 lock (p.obj)
                 {
-                    if (p.liderHistory.Count < p.Slot)
+                    if (p.liderHistory[request.Slot - 1] == -1)
                     {
                         Console.WriteLine("LEARNERS -- SHARKS DO NOT LIKE O1");
                         Monitor.Wait(p.obj);
