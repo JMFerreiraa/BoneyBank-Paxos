@@ -201,10 +201,6 @@ namespace BoneyServer
         // what will it send?  < Bool (0,1) if success, int saying biggest seen if bool negative, value>
         public List<int> recievedProposel(int lider)
         {
-            if (frozen)
-            {
-                Console.WriteLine("FREEEEEEZZEEEEEE");
-            }
             Console.WriteLine("ACCEPTOR: Acceptor recieved a proposel.");
             if(!(lider < lider_that_wrote || lider < biggest_lider_seen))
             {
@@ -231,11 +227,10 @@ namespace BoneyServer
             }
             else
             {
-                Console.WriteLine("ACCEPTORRRRRR: biggest -> {0}, value ->{1}", leader, value_to_accept);
                 value = value_to_accept;
                 biggest_lider_seen = leader;
                 lider_that_wrote = leader;
-                Console.WriteLine("ACCEPTOR: Acceptor {0} sending to learners {1}", processID, value_to_accept);
+                Console.WriteLine("ACCEPTOR slot = " + currSlot + " Acceptor {0} sending to learners {1}", processID, value_to_accept);
                 List<int> learnersrep = new List<int>();
                 foreach (BoneyBoneyCommunications.BoneyBoneyCommunicationsClient server in boneyServers)
                 {
@@ -266,7 +261,7 @@ namespace BoneyServer
                     Acceptor = acceptorId,
                     Slot = currSlot
                 });
-                Console.WriteLine("ACCEPTOR slot = " + currSlot + " :Received learner response! " + response.Value);
+                Console.WriteLine("ACCEPTOR slot = " + currSlot + ": Received learner response! " + response.Value);
                 lock (learnersrep)
                 {
                     learnersrep.Add(response.Value);
@@ -277,23 +272,11 @@ namespace BoneyServer
                 }
             }catch(Exception e)
             {
-                Console.WriteLine("ACCEPTOR: Error sending to learners.");
+                Console.WriteLine("ACCEPTOR slot = " + currSlot + ": Error sending to learners.");
             }
             
         }
 
-        public void clean()
-        {
-            value = -1;
-            biggest_lider_seen = -1;
-            lider_that_wrote = -1;
-        }
-
-        public void show()
-        {
-            Console.WriteLine("ACCEPTOR: value-> {0}, biggest_lider_seen-> {1}, lider_that_wrote-> {2}",
-                value, biggest_lider_seen, lider_that_wrote);
-        }
     }
 
     public class Learner
@@ -333,7 +316,7 @@ namespace BoneyServer
         {
             // Leader - 3(n servers, we get their id)
 
-            Console.WriteLine("LEARNER slot " + currSlot + ": Welcome to the gulag, learners only may survive! Acceptor: {0}", acceptor);
+            Console.WriteLine("LEARNER slot " + currSlot + ": Received Learning request from Acceptor: {0}", acceptor + "with value= " + value_sent);
 
             biggestLeaderSeen = leader;
             //values_received[acceptor -1] = value_sent;
@@ -355,41 +338,13 @@ namespace BoneyServer
                 {
                     //send_msg_to_server(serversAddresses, e);
                     //Clean learners function.
-                    Console.WriteLine("LEARNER:: returning that learner got " + e);
+                    Console.WriteLine("LEARNER slot " + currSlot + ": returning that learner got " + e);
                     return e;
                 }
-                count = 0;
             }
-            Console.WriteLine("LEARNER:: I AM NOT THE FINAL RESULT YET");
+            Console.WriteLine("LEARNER slot " + currSlot + ": I AM NOT THE FINAL RESULT YET");
             return 0;
         }
-
-        public void send_msg_to_server(Dictionary<int, BoneyServerCommunications.BoneyServerCommunicationsClient> serversAddresses,
-            int consensus)
-        {
-            foreach (BoneyServerCommunications.BoneyServerCommunicationsClient server in serversAddresses.Values)
-            {
-                try {
-                    var response = server.Consensus(new ConsensusInLearnerRequest { Value = consensus });
-                    Console.WriteLine("LEARNER: Sent message to main server with sucess");
-                }catch
-                {
-                    Console.WriteLine("LEARNER: Fail to send msg to main servers");
-                }
-            }
-
-        }
-
-        public void show(int slot)
-        {
-            Console.WriteLine("LEARNER: ");
-            foreach(int i in dic[slot])
-            {
-                Console.Write(i + " ");
-            }
-            Console.WriteLine();
-        }
-
         public void universal_show()
         {
             string s = "";

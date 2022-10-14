@@ -302,7 +302,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             // ta feio e dps mudamos mas por agora da
             Console.WriteLine("###################### STARTING CONSENSUS ######################");
             int outv_tmp;
-            Console.WriteLine("Current liderHistory size --> " + p.liderHistory.Count);
             Console.WriteLine("I got a request with value " + request.Invalue + " for slot " + request.Slot + " lets get consensus!");
             
             if (p.liderHistory[request.Slot - 1] != -1) //Lider já foi foi consensed! Então retornar só oq está na history
@@ -329,11 +328,8 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                     if (outv_tmp == -2)
                     {
                         //N sou o lider --> Ficar a espera do consensus de outros processos bloqueada!
-                        Console.WriteLine("Getting locked :(");
-
                         while (p.liderHistory[request.Slot - 1] == -1)
                             Monitor.Wait(p.proposer);
-                        Console.WriteLine("Leaving Lock!");
                         outv_tmp = p.liderHistory.ElementAt(request.Slot - 1);
                         Console.WriteLine("Already consensed in the past! We got value=" + outv_tmp + " for slot=" + request.Slot);
                     }
@@ -378,7 +374,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
             Console.WriteLine("I got a prepare from " + request.Leader + "!");
 
-
             lock (p.lockOb)
             {
                 if (p.acceptor.frozen)
@@ -386,8 +381,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                     Monitor.Wait(p.lockOb);
                 }
             }
-
-            Console.WriteLine("NÃO FIQUEI LOCKET PK N SOU RETARDADO!");
             List<int> reply;
 
 
@@ -426,12 +419,11 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             reply = p.acceptor.receivedAccept(request.Value, request.Leader, p.boneysAddresses.Values.ToList(), request.Slot);
             Console.WriteLine("ACCEPTOR: OUT " + request.Value + " from " + request.Leader);
 
-            Console.WriteLine("Reply = " + reply[0] + " " + reply[1]);
+            Console.WriteLine("ACCEPTOR: Reply = " + reply[0] + " " + reply[1]);
             return new ConsensusAcceptReply
             {
                 Leader = reply[0],
                 Value = reply[1]
-                //mais um parametro?
             };
         }
 
@@ -464,13 +456,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             {
                 lock(p.liderHistory)
                 {
-                    /*
-                    if (p.Slot > p.liderHistory.Count)
-                    {
-                        p.liderHistory.Add(accepted);
-                        //JOAOOOOO isto da fix para o primeiro paxos, para manter a lista bem
-                        // temos de aumentar o slot no bank server (ainda n ta a fazer);
-                    }*/
                     p.liderHistory[request.Slot - 1] = accepted;
                 }
                 
@@ -488,7 +473,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 
                 lock (p.obj)
                 {
-                    Console.WriteLine("LEARNERS -- PULSING ALL WAITING LEARNERS!");
                     Monitor.PulseAll(p.obj);
                 }
             }
@@ -498,9 +482,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 {
                     if (p.liderHistory[request.Slot - 1] == -1)
                     {
-                        Console.WriteLine("LEARNERS -- SHARKS DO NOT LIKE O1");
                         Monitor.Wait(p.obj);
-                        Console.WriteLine("LEARNERS -- SHARKS DO NOT LIKE O2");
                     }
                 }
             }
