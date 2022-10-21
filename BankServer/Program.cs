@@ -291,7 +291,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 timeLeftUntilFirstRun -= new TimeSpan(24, 0, 0);    // Deducts a day from the schedule so it will run today.
 
             System.Timers.Timer execute = new System.Timers.Timer();
-            execute.Interval = timeLeftUntilFirstRun.TotalMilliseconds;
+            execute.Interval = 5000; //timeLeftUntilFirstRun.TotalMilliseconds;
             execute.Elapsed += findLider;    // Event to do your tasks.
             execute.AutoReset = false;
             execute.Start();
@@ -318,9 +318,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         { Slot = currentSlot, Invalue = proposed },
                     deadline: DateTime.UtcNow.AddSeconds(20));
 
-                Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue + " for slot=" + slotToSend);
+                Console.WriteLine("SERVER(REPLY 1) " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue + " for slot=" + slotToSend);
 
-                
+
                 lock (this)
                 {
                     if (!liderBySlot.ContainsKey(currentSlot))
@@ -328,7 +328,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
                     Monitor.Pulse(this);
                 }
-                Console.WriteLine("value slot = " + currentSlot);
             }
             catch (Exception ex)
             {
@@ -359,8 +358,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
             Console.WriteLine("Leader round number: " + counter);
             Console.WriteLine(DateTime.Now.ToString("HH:mm:ss"));
 
-            Console.WriteLine("I WILL START FOR SLOT {0}!", currentSlot);
-            aTimer.Start();
+            Console.WriteLine("-----------------------------------------I WILL START FOR SLOT {0}-----------------------------------------------------------", currentSlot);
+            if(currentSlot != numberOfSlots)
+                aTimer.Start();
 
             Console.WriteLine("I am proposing server " + proposed + " To be the lider!");
 
@@ -368,19 +368,14 @@ namespace BankServer // Note: actual namespace depends on the project name.
             {
                 var threadFour = new Thread(() => sendToServer(proposed, server));
                 threadFour.Start();
+                var threadFive = new Thread(() => sendToServer(proposed + 1, server));
+                threadFive.Start();
             }
 
             lock (this)
             {
                 Monitor.Wait(this);
                 Console.WriteLine("Boneys consensus was that bank server N " + liderBySlot[currentSlot] + " is the new lider!");
-            }
-            //Chegou ao fim!
-            if (currentSlot > numberOfSlots)
-            {
-                while(true)
-                    if(Console.ReadLine().ToLower() == "exit")
-                        Environment.Exit(1);
             }
         }
 

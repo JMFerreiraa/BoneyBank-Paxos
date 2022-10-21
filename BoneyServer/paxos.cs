@@ -289,10 +289,10 @@ namespace BoneyServer
         Dictionary<int, List<int>> dic = new Dictionary<int, List<int>>();
 
 
-        public Learner(int size)
+        public Learner(int size, int numberOfSlots)
         {
             number_of_servers = size;
-            for (int i = 1; i <= 3; i++) //CHANGE 3 TO NUMBER OF SLOTS!
+            for (int i = 1; i <= numberOfSlots; i++) //CHANGE 3 TO NUMBER OF SLOTS!
             {
                 List<int> tmp = new List<int>();
                 for (int e = 0; e < size; e++)

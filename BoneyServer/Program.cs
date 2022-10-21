@@ -39,6 +39,9 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         internal int Slot;
         internal object obj = new object();
 
+        internal bool consensing = false;
+        internal List<bool> consensingList;
+
         public string Host
         {
             get { return host; }
@@ -192,7 +195,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 timeLeftUntilFirstRun -= new TimeSpan(24, 0, 0);    // Deducts a day from the schedule so it will run today.
 
             System.Timers.Timer execute = new System.Timers.Timer();
-            execute.Interval = timeLeftUntilFirstRun.TotalMilliseconds;
+            execute.Interval = 4700; //timeLeftUntilFirstRun.TotalMilliseconds;
             execute.Elapsed += advanceSlot;    // Event to do your tasks.
             execute.AutoReset = false;
             execute.Start();
@@ -200,7 +203,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             Console.WriteLine(now.ToString());
             Console.WriteLine(activationTime.ToString());
 
-            aTimer = new System.Timers.Timer(slotTime * 1000 - 1000);
+            aTimer = new System.Timers.Timer(slotTime * 1000);
             aTimer.Elapsed += advanceSlot;
             aTimer.AutoReset = false;
         }
@@ -216,7 +219,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
         {
             bool wasFrozen = proposer.frozen;
             currentSlot += 1;
-            Console.WriteLine("CURRENT SLOT = " + currentSlot);
+            Console.WriteLine("-----------------------------CURRENT SLOT = " + currentSlot + " ----------------------------------------------");
             if (currentSlot != numberOfSlots)
             {
                 aTimer.Interval = slotTime * 1000;
@@ -244,9 +247,10 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             Program p = new Program();
             p.processId = Int32.Parse(args[0]);
             p.parseConfigFile();
+            p.consensingList = new List<bool>(new bool[p.numberOfSlots + 1]);
             p.fillList();
             p.proposer = new Proposer(p.processId, p.boneysAddresses);
-            p.learn = new Learner(p.boneysAddresses.Count);
+            p.learn = new Learner(p.boneysAddresses.Count, p.numberOfSlots);
             p.acceptor = new Acceptor(p.processId);
             Console.WriteLine("Write exit to quit");
             Server server = new Server
@@ -298,12 +302,21 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 }
             }
 
-            //JOAOOO n tavamos a dar clear nos nao lider do boney
-            // ta feio e dps mudamos mas por agora da
             Console.WriteLine("###################### STARTING CONSENSUS ######################");
+
             int outv_tmp;
             Console.WriteLine("I got a request with value " + request.Invalue + " for slot " + request.Slot + " lets get consensus!");
             
+            lock (p.proposer)
+            {
+                if (!p.consensingList[request.Slot - 1]) p.consensingList[request.Slot - 1] = true;
+                else
+                {
+                    while (p.liderHistory[request.Slot - 1] == -1)
+                        Monitor.Wait(p.proposer);
+                }
+            }
+
             if (p.liderHistory[request.Slot - 1] != -1) //Lider já foi foi consensed! Então retornar só oq está na history
             {
                 outv_tmp = p.liderHistory.ElementAt(request.Slot - 1);
@@ -311,22 +324,12 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             }
             else
             {
-                // Yes -1 pq eu passo em lista, tu mandas logo em dicionario type stuff.
-
-                foreach (List<int> i in p.status.Values)
-                {
-                    foreach (int e in i )
-                    {
-                        Console.Write(e + " ");
-                    }
-                    Console.WriteLine();
-                }
-
                 p.Slot = request.Slot;
                 outv_tmp = p.proposer.processProposal(request.Invalue, p.boneysAddresses, p.status[request.Slot], p.Slot);
                 lock (p.proposer){
                     if (outv_tmp == -2)
                     {
+                    
                         //N sou o lider --> Ficar a espera do consensus de outros processos bloqueada!
                         while (p.liderHistory[request.Slot - 1] == -1)
                             Monitor.Wait(p.proposer);
@@ -338,11 +341,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             }
             Console.WriteLine("sending reply to server!");
             //JOAOOOO Tamos a meter a mais na lista! dei fix la em baixo (learner) mesmo file
-            foreach (int i in p.liderHistory)
-            {
-                Console.Write(i + " ");
-            }
-            Console.WriteLine();
 
             return new CompareAndSwapReply
             {
@@ -455,7 +453,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             if (accepted != 0)
             {
                 lock(p.liderHistory)
-                {
+                {   
                     p.liderHistory[request.Slot - 1] = accepted;
                 }
                 
@@ -464,6 +462,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                     try
                     {
                         Monitor.PulseAll(p.proposer);
+                        p.consensingList[request.Slot-1] = false;
                     }
                     catch (Exception e)
                     {
