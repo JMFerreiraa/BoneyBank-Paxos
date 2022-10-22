@@ -41,7 +41,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
         internal bool consensing = false;
         internal List<bool> consensingList;
-
         public string Host
         {
             get { return host; }

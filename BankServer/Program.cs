@@ -3,6 +3,7 @@ using Grpc.Net.Client;
 using System;
 using System.Timers;
 using System.Threading;
+using System.Data;
 
 namespace BankServer // Note: actual namespace depends on the project name.
 {
@@ -47,7 +48,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             {
                 if (p.accounts.ContainsKey(request.Name)) { 
                     success = false;
-                    Console.WriteLine("New Client tried to register with name " + request.Name+ " but failed!");
+                    Console.WriteLine("New Client tried to register with name " + request.Name + " but failed!");
                 }
                 else
                 {
@@ -65,7 +66,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public DepositeReply Dep(DepositeRequest request)
         {
-            Console.WriteLine("New Deposit by " + request.Name + "amount: " + request.Amount);
+            Console.WriteLine("New Deposit by " + request.Name + " amount: " + request.Amount);
             lock (this)
             {
                 p.accounts[request.Name] += request.Amount;
@@ -79,7 +80,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public WithdrawalReply Widr(WithdrawalRequest request)
         {
-            Console.WriteLine("New Widrawal by " + request.Name + "amount: " + request.Amount);
+            Console.WriteLine("New Widrawal by " + request.Name + " amount: " + request.Amount);
             bool success = false;
             lock (this)
             {
@@ -155,6 +156,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
         int numberOfServers = 0;
         int counter = 0;
         List<int> frozen = new List<int>();
+        internal bool primary = false;
+
         System.Timers.Timer aTimer = new System.Timers.Timer(2000);
 
         internal Dictionary<string, float> accounts = new Dictionary<string, float>();
@@ -324,7 +327,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 lock (this)
                 {
                     if (!liderBySlot.ContainsKey(currentSlot))
+                    {
                         liderBySlot.Add(currentSlot, reply.Outvalue);
+                        if (liderBySlot[currentSlot] == processId)
+                            primary = true;
+                    }
 
                     Monitor.Pulse(this);
                 }
@@ -340,13 +347,22 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             //TO-DO: O que acontece se estiver frozen e ninguem suspeita q está?
             
-
+            primary = false;
             int proposed = -1;
             int slot = currentSlot;
             currentSlot = slot + 1;
 
             foreach (int server in serversAddresses.Keys)
             {
+                if(server == processId)
+                {
+                    if (frozen[currentSlot-1] == 1) //CHANGE THIS LATER TO A ifFronzen.
+                    {
+                        proposed = server;
+                        break;
+                    }
+                }
+
                 if (status[currentSlot].ElementAt(server - 1) == 1)
                 {
                     proposed = server;
@@ -368,8 +384,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
             {
                 var threadFour = new Thread(() => sendToServer(proposed, server));
                 threadFour.Start();
+                /*
                 var threadFive = new Thread(() => sendToServer(proposed + 1, server));
-                threadFive.Start();
+                threadFive.Start();*/
             }
 
             lock (this)
