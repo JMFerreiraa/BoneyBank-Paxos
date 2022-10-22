@@ -1,0 +1,26 @@
+﻿syntax = "proto3";
+
+service BankBankCommunications{
+	rpc Tentative(tentativeRequest) returns (tentativeReply);
+	rpc Commit(commitRequest) returns (commitReply);
+}
+
+message commitRequest{
+	int32 operation = 1;
+	int32 slot = 2;
+	int32 sequenceNumber = 3;
+	float amount = 4;
+	string name = 5;
+}
+
+message commitReply{
+	bool ok = 1;
+}
+
+message tentativeRequest{
+	int32 sequenceNumber = 3;
+}
+
+message tentativeReply{
+	bool ok = 1;
+}

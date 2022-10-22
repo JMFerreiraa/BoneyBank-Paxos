@@ -84,10 +84,10 @@ namespace PuppetMaster
             processesList.Add(p.run(1));
             processesList.Add(p.run(2));
             processesList.Add(p.run(3));
+            processesList.Add(p.run(7));
             processesList.Add(p.run(4));
             processesList.Add(p.run(5));
             processesList.Add(p.run(6));
-            processesList.Add(p.run(7));
 
             while (true)
             {

@@ -4,9 +4,15 @@ using System;
 using System.Timers;
 using System.Threading;
 using System.Data;
+using Google.Protobuf.WellKnownTypes;
+using System.Net.Http.Headers;
 
 namespace BankServer // Note: actual namespace depends on the project name.
 {
+    internal class atomicBool
+    {
+        public bool b = false;
+    }
     internal class BankService : BankClientCommunications.BankClientCommunicationsBase
     {
 
@@ -41,6 +47,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
             return Task.FromResult(Rd(request));
         }
 
+        //READ ME: int values -> 1 Dep, 2 Wid , 3 Read, 0 reg
+
         public RegisterReply Reg(RegisterRequest request)
         {
             bool success;
@@ -69,7 +77,23 @@ namespace BankServer // Note: actual namespace depends on the project name.
             Console.WriteLine("New Deposit by " + request.Name + " amount: " + request.Amount);
             lock (this)
             {
-                p.accounts[request.Name] += request.Amount;
+                if (p.primary.b)
+                {
+                    int sequenceNumber = p.sequenceNumbers.Count;
+                    p.sequenceNumbers.Add(sequenceNumber);
+
+                    if (p.sendTentative(sequenceNumber))
+                    {
+                        if(p.primary.b /*&& p.sendCommit(1, request.Amount, sequenceNumber, request.Name)*/)
+                        {
+                            p.accounts[request.Name] += request.Amount;
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("|BankBank| Not primary, I dont do anything.");
+                }
             }
             return new DepositeReply
             {
@@ -109,8 +133,68 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 Amount = amount
             };
         }
+
     }
 
+    internal class BankBank : BankBankCommunications.BankBankCommunicationsBase
+    {
+        private Program p;
+
+        public BankBank(Program program)
+        {
+            this.p = program;
+        }
+
+        public override Task<tentativeReply> Tentative(
+            tentativeRequest request, ServerCallContext context)
+        {
+            return Task.FromResult(Tent(request));
+        }
+
+        public tentativeReply Tent(tentativeRequest request)
+        {
+            lock (this)
+            {
+                Console.WriteLine("|BankBank| Received tentative with number {0}", request.SequenceNumber);
+                if (!p.sequenceNumbers.Contains(request.SequenceNumber))
+                    p.sequenceNumbers.Add(request.SequenceNumber);
+            }
+            return new tentativeReply
+            {
+                Ok = true
+            };
+        }
+
+        public override Task<commitReply> Commit(
+            commitRequest request, ServerCallContext context)
+        {
+            return Task.FromResult(Com(request));
+        }
+
+        public commitReply Com(commitRequest request)
+        {
+            lock (this)
+            {
+                switch (request.Operation)
+                {
+                    case 0:
+                        break;
+                    case 1:
+                        break;
+                    case 2:
+                        break;
+                    case 3:
+                        break;
+                }
+            }
+            return new commitReply
+            {
+                Ok = true
+            };
+        }
+    }
+
+    //DELETE THIS CLASS LATER, USELLESS (REMOVE FROM MAIN SERVER INICIO)
     public class BankBoney : BoneyServerCommunications.BoneyServerCommunicationsBase
     {
         public BankBoney()
@@ -156,11 +240,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
         int numberOfServers = 0;
         int counter = 0;
         List<int> frozen = new List<int>();
-        internal bool primary = false;
+        internal atomicBool primary = new atomicBool();
 
         System.Timers.Timer aTimer = new System.Timers.Timer(2000);
 
         internal Dictionary<string, float> accounts = new Dictionary<string, float>();
+
+        internal List<int> sequenceNumbers = new List<int>();
 
         public int Port
         {
@@ -282,6 +368,70 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
         }
 
+        public bool sendTentative(int sequenceNumber)
+        {
+            Console.WriteLine("|BankBank| Primary sending sequenceNumber {0}.", sequenceNumber);
+            foreach (KeyValuePair<int, string> entry in serversAddresses)
+            {
+                if(entry.Key != processId)
+                {
+                    //MANDA SO PARA TODOS E ASSUME Q RECEBE|| CHANGE LATER
+                    GrpcChannel channel = GrpcChannel.ForAddress(entry.Value);
+                    BankBankCommunications.BankBankCommunicationsClient client = 
+                        new BankBankCommunications.BankBankCommunicationsClient(channel);
+                    var thread = new Thread(() => sendT(sequenceNumber, client));
+                    thread.Start();
+                }
+            }
+
+            return true;
+        }
+
+        public void sendT(int sequenceNumber, BankBankCommunications.BankBankCommunicationsClient client)
+        {
+            try
+            {
+                var reply = client.Tentative(new tentativeRequest { SequenceNumber = sequenceNumber});
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Failed to send request to Bank server.");
+            }
+        }
+
+        public bool sendCommit(int operation, float amount, int sequenceNumber, string name)
+        {
+            Console.WriteLine("|BankBank| Primary sending commit for {0}.", sequenceNumber);
+            foreach (KeyValuePair<int, string> entry in serversAddresses)
+            {
+                if (entry.Key != processId)
+                {
+                    //MANDA SO PARA TODOS E ASSUME Q RECEBE|| CHANGE LATER
+                    GrpcChannel channel = GrpcChannel.ForAddress(entry.Value);
+                    BankBankCommunications.BankBankCommunicationsClient client =
+                        new BankBankCommunications.BankBankCommunicationsClient(channel);
+                    var thread = new Thread(() => sendC(operation, amount,  sequenceNumber, name, client));
+                    thread.Start();
+                }
+            }
+            return true;
+        }
+
+        public void sendC(int operation, float amount, int sequenceNumber, string name,
+            BankBankCommunications.BankBankCommunicationsClient client)
+        {
+            try
+            {
+                var reply = client.Commit(new commitRequest { Operation = operation, Amount = amount,
+                                                              Slot = slotTime, SequenceNumber = sequenceNumber,
+                                                              Name = name});
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Failed to send request to Bank server.");
+            }
+        }
+
         public void startTimer()
         {
             Console.WriteLine("Timer will be started.");
@@ -329,9 +479,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     if (!liderBySlot.ContainsKey(currentSlot))
                     {
                         liderBySlot.Add(currentSlot, reply.Outvalue);
-                        if (liderBySlot[currentSlot] == processId)
-                            primary = true;
                     }
+
+                    if (liderBySlot[currentSlot] == processId)
+                        primary.b = true;
 
                     Monitor.Pulse(this);
                 }
@@ -346,8 +497,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
             // Do your stuff and recalculate the timer interval and reset the Timer.
 
             //TO-DO: O que acontece se estiver frozen e ninguem suspeita q está?
-            
-            primary = false;
+            lock (primary)
+            {
+                primary.b = false;
+            }
             int proposed = -1;
             int slot = currentSlot;
             currentSlot = slot + 1;
@@ -412,7 +565,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
             Server server = new Server
             {
                 Services = { BankClientCommunications.BindService(new BankService(p)),
-                            BoneyServerCommunications.BindService(new BankBoney())},
+                            BoneyServerCommunications.BindService(new BankBoney()),
+                            BankBankCommunications.BindService(new BankBank(p))},
                 Ports = { new ServerPort("localhost", p.Port, ServerCredentials.Insecure) }
             };
             server.Start();

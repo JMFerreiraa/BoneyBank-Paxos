@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="protos\BankBankMessages.proto" />
     <None Remove="protos\ServerBoneyMessages.proto" />
   </ItemGroup>
 
@@ -19,6 +20,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <Protobuf Include="protos\BankBankMessages.proto" GrpcServices="Both" />
 	  <Protobuf Include="protos\ClientServerMessages.proto" GrpcServices="Server" />
 	  <Protobuf Include="protos\ServerBoneyMessages.proto" GrpcServices="Both" />
   </ItemGroup>
