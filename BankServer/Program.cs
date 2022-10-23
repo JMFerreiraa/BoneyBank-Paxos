@@ -84,9 +84,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
                     if (p.sendTentative(sequenceNumber))
                     {
-                        if(p.primary.b /*&& p.sendCommit(1, request.Amount, sequenceNumber, request.Name)*/)
+                        if(p.primary.b && p.sendCommit(1, request.Amount, sequenceNumber, request.Name))
                         {
                             p.accounts[request.Name] += request.Amount;
+                            Console.WriteLine("|BankBank| D value {0}", p.accounts[request.Name]);
                         }
                     }
                 }
@@ -108,9 +109,30 @@ namespace BankServer // Note: actual namespace depends on the project name.
             bool success = false;
             lock (this)
             {
-                if (p.accounts[request.Name] - request.Amount > 0) { 
-                    p.accounts[request.Name] -= request.Amount;
-                    success = true;
+                lock (this)
+                {
+                    if (p.primary.b)
+                    {
+                        int sequenceNumber = p.sequenceNumbers.Count;
+                        p.sequenceNumbers.Add(sequenceNumber);
+
+                        if (p.sendTentative(sequenceNumber))
+                        {
+                            if (p.primary.b && p.sendCommit(2, request.Amount, sequenceNumber, request.Name))
+                            {
+                                if (p.accounts[request.Name] - request.Amount >= 0)
+                                {
+                                    p.accounts[request.Name] -= request.Amount;
+                                    success = true;
+                                    Console.WriteLine("|BankBank| W value {0}", p.accounts[request.Name]);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("|BankBank| Not primary, I dont do anything.");
+                    }
                 }
             }
             return new WithdrawalReply
@@ -123,9 +145,48 @@ namespace BankServer // Note: actual namespace depends on the project name.
         public ReadReply Rd(ReadRequest request)
         {
             Console.WriteLine("New Read by " + request.Name);
-            float amount;
+            float amount = -1;
             lock (this)
             {
+                if (p.primary.b)
+                {
+                    amount = p.accounts[request.Name];
+                    Console.WriteLine("|BankBank| Primeary read {0}", amount);
+                    int sequenceNumber = p.sequenceNumbers.Count;
+                    p.sequenceNumbers.Add(sequenceNumber);
+                    p.sendTentative(sequenceNumber);
+                    p.sendCommit(3, amount, sequenceNumber, request.Name);
+                }
+                else
+                {
+                    Console.WriteLine("|BankBank| Not primary, I dont do anything.");
+                }
+                /*
+                amount = -1;
+                lock (this)
+                {
+                    if (p.primary.b)
+                    {
+                        int sequenceNumber = p.sequenceNumbers.Count;
+                        p.sequenceNumbers.Add(sequenceNumber);
+
+                        if (p.sendTentative(sequenceNumber))
+                        {
+                            if (p.primary.b && p.sendCommit(3, amount, sequenceNumber, request.Name))
+                            {
+                                amount = p.accounts[request.Name];
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("|BankBank| Not primary, I dont do anything.");
+                    }
+                }*/
+
+
+                //Ele ainda envia para todos mas as threads podem fazer um dos backups chegar primeiro so isto garante
+                // q ele manda bem
                 amount = p.accounts[request.Name];
             }
             return new ReadReply
@@ -171,19 +232,42 @@ namespace BankServer // Note: actual namespace depends on the project name.
             return Task.FromResult(Com(request));
         }
 
+        //READ ME --> as vezes ele n recebe tentative mas recebe commit o q o faz falhar na operacao fix later
         public commitReply Com(commitRequest request)
         {
             lock (this)
             {
                 switch (request.Operation)
                 {
+                    //TODO garantir q so faz umas vez com o seqnumber
                     case 0:
                         break;
                     case 1:
+                        Console.WriteLine("|BankBank| Request received to commit for deposite.");
+                        if (p.sequenceNumbers.Contains(request.SequenceNumber) /*&& request.Slot == p.currentSlot*/)
+                        {
+                            p.accounts[request.Name] += request.Amount;
+                            Console.WriteLine("|BankBank| D value {0}", p.accounts[request.Name]);
+                        }
                         break;
                     case 2:
+                        Console.WriteLine("|BankBank| Request received to commit for with.");
+                        if (p.sequenceNumbers.Contains(request.SequenceNumber)/* && request.Slot == p.currentSlot*/)
+                        {
+                            if (p.accounts[request.Name] - request.Amount >= 0)
+                            {
+                                p.accounts[request.Name] -= request.Amount;
+                            }
+                            Console.WriteLine("|BankBank| W value {0}", p.accounts[request.Name]);
+                        }
                         break;
                     case 3:
+                        if (p.sequenceNumbers.Contains(request.SequenceNumber)/* && request.Slot == p.currentSlot*/)
+                        {
+                            Console.WriteLine("|BankBank| Request received to commit for read. Amount {0}",
+                            p.accounts[request.Name]);
+                        }
+                        // I mean its a read see it later.
                         break;
                 }
             }
@@ -225,7 +309,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
     {
         int processId = -1;
         string processUrl = "";
-        int currentSlot = 0;
+        internal int currentSlot = 0;
 
         private Dictionary<int, string> clientsAddresses = new Dictionary<int, string>();
         private Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
@@ -486,6 +570,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
                     Monitor.Pulse(this);
                 }
+
+                //READ ME
+                // SEE WITH SLOT WHEN MESSAGES BUG IT MIGHT BUG HERE | DO PRIMARY BASIADO EM BOOL[SLOTS]
+                Console.WriteLine("AM I PRIMARY TODAY? " + primary.b + " SLOT " + currentSlot);
             }
             catch (Exception ex)
             {
