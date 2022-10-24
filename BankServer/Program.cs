@@ -170,6 +170,12 @@ namespace BankServer // Note: actual namespace depends on the project name.
         {
             //Lets apply the operation!
             Console.WriteLine("Received Commit for client={0} & operationID={1} with seqNumber={2} ", request.ClientID, request.OperationID, request.SequenceNumber);
+            lock(p.lockObj){
+                while (request.SequenceNumber > p.executedOperations.Count())
+                {
+                    Monitor.Wait(p.lockObj);
+                }
+            }
             lock (p.executedOperations)
             {
                 if (!p.executedOperations.Contains(Tuple.Create(request.ClientID, request.OperationID)))
@@ -179,7 +185,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     Monitor.PulseAll(p.executedOperations);
                 }
             }
-            
+            lock (p.lockObj)
+            {
+                Monitor.PulseAll(p.lockObj);
+            }
+
             return new commitReply
             {
                 Ok = true
@@ -194,6 +204,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
         int processId = -1;
         string processUrl = "";
         internal int currentSlot = 0;
+        internal Object lockObj = new Object();
+
 
         private Dictionary<int, string> clientsAddresses = new Dictionary<int, string>();
         private Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
