@@ -43,35 +43,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         //READ ME: int values -> 1 Dep, 2 Wid , 3 Read, 0 reg
 
-        void handleOperation(int clientID, int operationID)
-        {
 
-            if (p.primary.b) //Se for primário, vai enviar a seq number deste para todos
-            {
-                lock(this){
-                    int seqN = p.executedOperations.Count;
-                    bool tentativeReply = p.sendTentative(seqN);
-
-                    if (tentativeReply) //TODO o que fazer se for false? Tentar com um seqN superior?
-                    {
-                        bool commitResponse = p.sendCommit(clientID, operationID, seqN);
-                        if (commitResponse)
-                        {
-                            p.accountBalance += p.operations[Tuple.Create(clientID, operationID)];
-                            p.executedOperations.Add(Tuple.Create(clientID, operationID));
-                        }
-                        
-                    }
-                }
-            }
-            else //Esperar resposta seq number e esperar ter recebido a seq number anterior :)
-            {
-                lock (p.executedOperations)
-                {
-                    Monitor.Wait(p.executedOperations);
-                }
-            }
-        }
         public DepositeReply Dep(DepositeRequest request)
         {
             Console.WriteLine("---------------------- NEW DESPOTITTT! -------------------------------");
@@ -79,9 +51,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
             lock (p.operations)
             {
                 p.operations.Add(Tuple.Create(request.OpInfo.ClientID, request.OpInfo.OperationID), request.Amount);
-
             }
-            handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID);
+            Console.WriteLine("Operations count = " + p.operations.Count);
+            p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID);
 
             Console.WriteLine("---------------------- END DEPOSIT!! -------------------------------");
             return new DepositeReply
@@ -104,7 +76,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 p.operations.Add(Tuple.Create(request.OpInfo.ClientID, request.OpInfo.OperationID), -request.Amount);
 
             }
-            handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID);
+            Console.WriteLine("STILL ON WIDRAWALL!");
+            p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID);
+            Console.WriteLine("STILL ON WIDRAWALL! (2)");
 
             Console.WriteLine("---------------------- ENDDD WIDRAWWWWW! -------------------------------");
 
@@ -202,7 +176,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 {
                     p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
                     p.executedOperations.Add(Tuple.Create(request.ClientID, request.OperationID));
-                    Monitor.Pulse(p.executedOperations);
+                    Monitor.PulseAll(p.executedOperations);
                 }
             }
             
@@ -240,8 +214,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         internal float accountBalance = 0;
         
-        internal List<int> sequenceNumbers = new List<int>();
-
         internal Dictionary<Tuple<int, int>, float> operations = new Dictionary<Tuple<int, int>, float>();
         internal List<Tuple<int, int>> executedOperations = new List<Tuple<int, int>>();
 
@@ -365,6 +337,37 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
         }
 
+        public void handleOperation(int clientID, int operationID)
+        {
+
+            if (primary.b) //Se for primário, vai enviar a seq number deste para todos
+            {
+                int seqN = executedOperations.Count;
+                bool tentativeReply = sendTentative(seqN);
+
+                if (tentativeReply) //TODO o que fazer se for false? Tentar com um seqN superior?
+                {
+                    bool commitResponse = sendCommit(clientID, operationID, seqN);
+                    if (commitResponse)
+                    {
+                        accountBalance += operations[Tuple.Create(clientID, operationID)];
+                        executedOperations.Add(Tuple.Create(clientID, operationID));
+                    }
+
+                }
+            }
+            else //Esperar resposta seq number e esperar ter recebido a seq number anterior :)
+            {
+                lock (executedOperations)
+                {
+                    while (!executedOperations.Contains(Tuple.Create(clientID, operationID)))
+                    {
+                        Monitor.Wait(executedOperations);
+                    }
+                }
+            }
+        }
+
         public bool sendTentative(int sequenceNumber)
         {
             List<bool> tentativeOkReplies = new List<bool>();
@@ -461,7 +464,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     commitReplies.Add(reply.Ok);
                     if(commitReplies.Count() + 1 > serversAddresses.Count() / 2)
                     {
-                        Monitor.Pulse(commitReplies);
+                        Monitor.PulseAll(commitReplies);
                     }
                 }
             }
@@ -589,6 +592,24 @@ namespace BankServer // Note: actual namespace depends on the project name.
             {
                 Monitor.Wait(this);
                 Console.WriteLine("Boneys consensus was that bank server N " + liderBySlot[currentSlot] + " is the new lider!");
+            }
+
+            if (primary.b)
+            {
+                Console.WriteLine("Now I need to handle stuff: size = " + operations.Count);
+                foreach (KeyValuePair<Tuple<int, int>, float> op in operations)
+                {
+                    if (!executedOperations.Contains(op.Key))
+                    {
+                        Console.WriteLine("Unhandled operation! :(");
+                        handleOperation(op.Key.Item1, op.Key.Item2);
+                        lock (executedOperations)
+                        {
+                            Monitor.PulseAll(executedOperations);
+                        }
+                        
+                    }
+                }
             }
         }
 
