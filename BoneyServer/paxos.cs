@@ -46,12 +46,13 @@ namespace BoneyServer
 
                 // using this for debug
                 Console.WriteLine("PROPOSERS: We got a ConsensusPromisse");
-                lock(this){
+                lock(lidersSeen)
+                {
                     lidersSeen.Add(response.PrevAcceptedLider);
                     propValues.Add(response.PrevAcceptedValue);
                     if (lidersSeen.Count > amountOfNodes / 2)
                     {
-                        Monitor.Pulse(this);
+                        Monitor.Pulse(lidersSeen);
                     }
                 }
             }
@@ -85,12 +86,11 @@ namespace BoneyServer
 
         public int processProposal(int prop, Dictionary<int, BoneyBoneyCommunications.BoneyBoneyCommunicationsClient> boneyAddresses, List<int> status, int currSlot)
         {
-            
             List<int> lidersSeen = new List<int>();
             List<int> propValues = new List<int>();
             this.boneyAddresses = boneyAddresses;
             //TO-DO: Verificar aqui se há algum servidor com ID mais baixo que esteja ligado
-        //Iterar todos os servidores até chegar a mim
+            //Iterar todos os servidores até chegar a mim
         startLabel:
             int minIdx = this.proposerId;
             int minID = allProposerIds[this.proposerId];
@@ -115,8 +115,8 @@ namespace BoneyServer
             }
             else if (minID != this.proposerId && status[minIdx - 1] == 1)
             {
-                //Existe um com menor ID e a funcionar! O que fazer?
-                //Para já vou parar de fazer paxos e assumir que outra réplica conseguiu fazer :)
+                //Existe um com menor ID e a funcionar!
+                //Esperar outra replica inferior acabar o paxos :)
                 return -2;
             }
 
@@ -128,10 +128,10 @@ namespace BoneyServer
                 threadFour.Start();
             }
 
-            lock (this)
+            lock (lidersSeen)
             {
                 if(lidersSeen.Count <= amountOfNodes / 2)
-                    Monitor.Wait(this);
+                    Monitor.Wait(lidersSeen);
             }
 
             int biggestLider = -1;
@@ -156,13 +156,11 @@ namespace BoneyServer
                 threadFour.Start();
             }
 
-            Console.WriteLine("IM GETTING STUCK STEP BRO!");
             lock (accepts)
             {
                 if(accepts.Count <= amountOfNodes / 2)
                     Monitor.Wait(accepts);
             }
-            Console.WriteLine("THX FOR THE HELP STEP BRO");
             int counter = 0;
             foreach (var acceptRep in accepts)
             {
@@ -172,6 +170,11 @@ namespace BoneyServer
                 {
                     biggestAccepted = acceptRep.Value;
                 }
+            }
+
+            if (biggestAccepted == -1)
+            {
+                goto startLabel;
             }
 
             Console.WriteLine("Returning biggestaccepted! = " + biggestAccepted);

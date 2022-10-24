@@ -4,37 +4,34 @@ service BankClientCommunications{
 	rpc Deposite(DepositeRequest) returns (DepositeReply);
 	rpc Withdrawal(WithdrawalRequest) returns (WithdrawalReply);
 	rpc Read(ReadRequest) returns (ReadReply);
-	rpc Register(RegisterRequest) returns (RegisterReply);
 }
 
-message RegisterRequest{
-	string name = 1;
-}
-
-message RegisterReply{
-	bool ok = 1;
+message  OperationInfo{
+	int32 clientID = 1;
+	int32 operationID = 2;
 }
 
 message DepositeRequest{
-	string name = 1;
+	OperationInfo opInfo = 1;
 	float amount = 2;
 }
 
 message DepositeReply{
-	bool ok = 1;
+	float amount = 1;
+	bool ok = 2;
 }
 
 message WithdrawalRequest{
-	string name = 1;
+	OperationInfo opInfo = 1;
 	float amount = 2;
 }
 
 message WithdrawalReply{
-	bool ok = 1;
+	float amount = 1;
+	bool ok = 2;
 }
 
 message ReadRequest{
-	string name = 1;
 }
 
 message ReadReply{

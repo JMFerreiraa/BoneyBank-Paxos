@@ -6,11 +6,11 @@ service BankBankCommunications{
 }
 
 message commitRequest{
-	int32 operation = 1;
-	int32 slot = 2;
+	int32 clientID = 1;
+	int32 operationID = 2;
 	int32 sequenceNumber = 3;
-	float amount = 4;
-	string name = 5;
+	int32 slot = 4; //?????
+	
 }
 
 message commitReply{
@@ -18,7 +18,8 @@ message commitReply{
 }
 
 message tentativeRequest{
-	int32 sequenceNumber = 3;
+	int32 serverID = 1;
+	int32 sequenceNumber = 2;
 }
 
 message tentativeReply{

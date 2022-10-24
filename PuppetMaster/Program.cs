@@ -44,7 +44,7 @@ namespace PuppetMaster
             return ptype;
         }
 
-        Process run(int processID)
+        Process run(int processID, bool hidden)
         {
             var baseDir = Directory.GetParent(System.IO.Directory.GetCurrentDirectory()).Parent.Parent.Parent;
             var bankClientExec = baseDir + "\\BankClient\\bin\\Debug\\net6.0\\BankClient";
@@ -71,7 +71,11 @@ namespace PuppetMaster
             startInfo.CreateNoWindow = false;
             startInfo.UseShellExecute = true;
             startInfo.FileName = dirToUse;
-            startInfo.WindowStyle = ProcessWindowStyle.Normal;
+            if(!hidden)
+                startInfo.WindowStyle = ProcessWindowStyle.Normal;
+            else
+                startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            
             startInfo.Arguments = "" + processID;
             Process p = Process.Start(startInfo);
             return p;
@@ -81,13 +85,13 @@ namespace PuppetMaster
             Console.WriteLine("Initiating Startup Sequence! Get ready!");
             List<Process> processesList = new List<Process>();
             Program p = new Program();
-            processesList.Add(p.run(1));
-            processesList.Add(p.run(2));
-            processesList.Add(p.run(3));
-            processesList.Add(p.run(7));
-            processesList.Add(p.run(4));
-            processesList.Add(p.run(5));
-            processesList.Add(p.run(6));
+            processesList.Add(p.run(1, true));
+            processesList.Add(p.run(2, true));
+            processesList.Add(p.run(3, true));
+            processesList.Add(p.run(4, false));
+            processesList.Add(p.run(5, false));
+            processesList.Add(p.run(6, false));
+            processesList.Add(p.run(7, false));
 
             while (true)
             {

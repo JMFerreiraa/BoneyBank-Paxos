@@ -18,11 +18,9 @@ namespace bankClient // Note: actual namespace depends on the project name.
 
     internal class Program
     {
-        private int clientId;
-        private int clientSequenceNumber;
-        private int processId;
+        internal int clientId;
+        internal int clientSequenceNumber;
         bool on = true; 
-        string clientName;
         internal object obj = new object();
 
         internal Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
@@ -30,8 +28,8 @@ namespace bankClient // Note: actual namespace depends on the project name.
         int numberOfServers = 0;
 
         void deposite(float amount, List<BankClientCommunications.BankClientCommunicationsClient> servers)
-        {   
-            Console.WriteLine("|Response| Deposite of " + amount.ToString() + ".");
+        {
+            clientSequenceNumber++;
             foreach(BankClientCommunications.BankClientCommunicationsClient client in servers)
             {
                 var thread = new Thread(() => sendD(amount, client));
@@ -52,9 +50,12 @@ namespace bankClient // Note: actual namespace depends on the project name.
         void readBalance(List<BankClientCommunications.BankClientCommunicationsClient> servers)
         {
             atomicFloat value = new atomicFloat();
-            foreach (BankClientCommunications.BankClientCommunicationsClient client in servers)
+            int serverN = 0;
+            foreach (BankClientCommunications.BankClientCommunicationsClient server in servers)
             {
-                var thread = new Thread(() => sendR(client, value));
+                serverN += 1;
+                int toSend = serverN;
+                var thread = new Thread(() => sendR(server, value, toSend));
                 thread.Start();
             }
             lock (obj)
@@ -77,9 +78,13 @@ namespace bankClient // Note: actual namespace depends on the project name.
         {
             try
             {
-                var reply = client.Deposite(new DepositeRequest { Amount = amount, Name = clientName });
+                OperationInfo op = new OperationInfo();
+                op.ClientID = clientId;
+                op.OperationID = clientSequenceNumber;
+                var reply = client.Deposite(new DepositeRequest { OpInfo = op, Amount = amount });
+                Console.WriteLine("Received Deposite Response: " + reply.Amount);
             }
-            catch(Exception e)
+            catch
             {
                 Console.WriteLine("Failed to send request.");
             }
@@ -89,44 +94,36 @@ namespace bankClient // Note: actual namespace depends on the project name.
         {   
             try
             {
-                var reply = client.Withdrawal(new WithdrawalRequest { Name = clientName, Amount = amount });
+                OperationInfo op = new OperationInfo();
+                op.ClientID = clientId;
+                op.OperationID = clientSequenceNumber;
+                var reply = client.Withdrawal(new WithdrawalRequest { OpInfo = op, Amount = amount });
+                Console.WriteLine("Received Widraw Response: " + reply.Amount);
             }
-            catch (Exception e)
+            catch
             {
                 Console.WriteLine("Failed to send request.");
             }
         }
 
-        void sendR(BankClientCommunications.BankClientCommunicationsClient client, atomicFloat f)
+        void sendR(BankClientCommunications.BankClientCommunicationsClient client, atomicFloat f, int serverN)
         {
             try
             {
-                var reply = client.Read(new ReadRequest { Name = clientName });
+                var reply = client.Read(new ReadRequest {});
                 f.f = reply.Amount;
+                Console.WriteLine("READ FROM SERVER " + serverN + ": replied with " + reply.Amount);
                 lock (obj)
                 {
-                    Monitor.PulseAll(obj);
+                    Monitor.Pulse(obj);
                 }
             }
-            catch (Exception e)
+            catch
             {
                 Console.WriteLine("Failed to send request.");
             }
         }
 
-        bool sendRegister(string name, BankClientCommunications.BankClientCommunicationsClient client)
-        {
-            try
-            {
-                var reply = client.Register(new RegisterRequest { Name = name });
-                return reply.Ok;
-            }
-            catch(Exception e)
-            {
-                Console.WriteLine("Failed to send request.");
-                return false;
-            }
-        }
 
         public void parseConfigFile()
         {
@@ -173,8 +170,17 @@ namespace bankClient // Note: actual namespace depends on the project name.
 
         static void Main(string[] args)
         {
+
+            if (args.Length != 1)
+            {
+                Console.WriteLine("Please give Client ID as argument!");
+                Environment.Exit(1);
+            }
+
             var p = new Program();
             p.parseConfigFile();
+            p.clientId = Int32.Parse(args[0]);
+            p.clientSequenceNumber = 0;
 
             List<BankClientCommunications.BankClientCommunicationsClient> servers = 
                 new List<BankClientCommunications.BankClientCommunicationsClient>();
@@ -184,22 +190,8 @@ namespace bankClient // Note: actual namespace depends on the project name.
                 servers.Add(new BankClientCommunications.BankClientCommunicationsClient(channel));
             }
 
-            Console.WriteLine("------------------------------------------------CLIENT------------------------------------------------");
-            Console.WriteLine("Nickname for bank registry:");
-            p.clientName = Console.ReadLine();
+            Console.WriteLine("------------------------------------------------CLIENT------------------------------------------------"); ;
 
-            bool registered = false;
-
-            foreach (BankClientCommunications.BankClientCommunicationsClient client in servers)
-            {
-                var thread = new Thread(() => registered = p.sendRegister(p.clientName, client));
-                thread.Start();
-            }
-
-            if (registered)
-            {
-                Console.WriteLine("|Response| Client Registered with success!");
-            }
             while (p.on)
             {
                 try
@@ -208,7 +200,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
                     //Console.WriteLine(command);
                     if(command != null) {
                         string[] command_words = command.Split(' ');
-                        switch (command_words[0])
+                        switch (command_words[0].ToUpper())
                         {
                             case "D":
                                 p.deposite(float.Parse(command_words[1], CultureInfo.InvariantCulture.NumberFormat), servers);
