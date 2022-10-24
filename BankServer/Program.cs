@@ -54,18 +54,27 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
                     if (tentativeReply) //TODO o que fazer se for false? Tentar com um seqN superior?
                     {
-                        p.sendCommit(clientID, operationID, seqN);
-                        p.executedOperations.Add(Tuple.Create(clientID, operationID));
+                        bool commitResponse = p.sendCommit(clientID, operationID, seqN);
+                        if (commitResponse)
+                        {
+                            p.accountBalance += p.operations[Tuple.Create(clientID, operationID)];
+                            p.executedOperations.Add(Tuple.Create(clientID, operationID));
+                        }
+                        
                     }
                 }
             }
             else //Esperar resposta seq number e esperar ter recebido a seq number anterior :)
             {
-
+                lock (p.executedOperations)
+                {
+                    Monitor.Wait(p.executedOperations);
+                }
             }
         }
         public DepositeReply Dep(DepositeRequest request)
         {
+            Console.WriteLine("---------------------- NEW DESPOTITTT! -------------------------------");
             Console.WriteLine("New Deposit: \nAccount = {0}\nAmount = {1}\nOperationID = {2}", request.OpInfo.ClientID, request.Amount, request.OpInfo.OperationID);
             lock (p.operations)
             {
@@ -74,6 +83,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
             handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID);
 
+            Console.WriteLine("---------------------- END DEPOSIT!! -------------------------------");
             return new DepositeReply
             {
                 Ok = true,
@@ -85,50 +95,23 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public WithdrawalReply Widr(WithdrawalRequest request)
         {
-            /*
-            Console.WriteLine("New Widrawall: \nAccount = {0}\nAmount = {1}\nOperationID = {2}", request.OpInfo.ClientID, request.Amount, request.OpInfo.OperationID);
+            Console.WriteLine("---------------------- NEW WIDRAWWWWW! -------------------------------");
 
-            bool success = false;
-            lock (this)
+            Console.WriteLine("New Widrawall: \nAccount = {0}\nAmount = {1}\nOperationID = {2}", request.OpInfo.ClientID, -request.Amount, request.OpInfo.OperationID);
+
+            lock (p.operations)
             {
-                if (p.primary.b)
-                {
-                    int sequenceNumber = p.sequenceNumbers.Count;
-                    p.sequenceNumbers.Add(sequenceNumber);
+                p.operations.Add(Tuple.Create(request.OpInfo.ClientID, request.OpInfo.OperationID), -request.Amount);
 
-                    if (p.sendTentative(sequenceNumber))
-                    {
-                        if (p.primary.b && p.sendCommit(2, request.Amount, sequenceNumber))
-                        {
-                            if (p.accountBalance - request.Amount >= 0)
-                            {
-                                p.accountBalance -= request.Amount;
-                                success = true;
-                                Console.WriteLine("|BankBank| W value {0}", p.accountBalance);
-                            }
-                        }
-                    }
-                    return new WithdrawalReply
-                    {
-                        Ok = success,
-                        Amount = p.accountBalance
-                    };
-                }
-                else
-                {
-                    Console.WriteLine("|BankBank| Not primary, I dont do anything.");
-                    return new WithdrawalReply
-                    {
-                        Ok = success,
-                        Amount = -1
-                    };
-                }
             }
-            */
+            handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID);
+
+            Console.WriteLine("---------------------- ENDDD WIDRAWWWWW! -------------------------------");
+
             return new WithdrawalReply
             {
                 Ok = true,
-                Amount = -1
+                Amount = p.accountBalance
             };
         }
 
@@ -194,9 +177,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         {
             lock (this)
             {
-                Console.WriteLine("|BankBank| Received tentative with number {0}", request.SequenceNumber);
-                if (!p.sequenceNumbers.Contains(request.SequenceNumber))
-                    p.sequenceNumbers.Add(request.SequenceNumber);
+                Console.WriteLine("|BankBank| Received tentative from server {0} for seqN {0}", request.ServerID, request.SequenceNumber);
             }
             return new tentativeReply
             {
@@ -213,34 +194,18 @@ namespace BankServer // Note: actual namespace depends on the project name.
         //READ ME --> as vezes ele n recebe tentative mas recebe commit o q o faz falhar na operacao fix later
         public commitReply Com(commitRequest request)
         {
-            /*
-            lock (this)
+            //Lets apply the operation!
+            Console.WriteLine("Received Commit for client={0} & operationID={1} with seqNumber={2} ", request.ClientID, request.OperationID, request.SequenceNumber);
+            lock (p.executedOperations)
             {
-                switch (request.Operation)
+                if (!p.executedOperations.Contains(Tuple.Create(request.ClientID, request.OperationID)))
                 {
-                    //TODO garantir q so faz umas vez com o seqnumber
-                    case 0:
-                        break;
-                    case 1:
-                        Console.WriteLine("|BankBank| Request received to commit for deposite.");
-                        p.accountBalance += request.Amount;
-                        Console.WriteLine("|BankBank| D value {0}", p.accountBalance);
-                        break;
-                    case 2:
-                        Console.WriteLine("|BankBank| Request received to commit for with.");
-                        if (p.accountBalance - request.Amount >= 0)
-                        {
-                            p.accountBalance -= request.Amount;
-                        }
-                        Console.WriteLine("|BankBank| W value {0}", p.accountBalance);
-                        break;
-                    case 3:
-                        Console.WriteLine("|BankBank| Request received to commit for read. Amount {0}", p.accountBalance);
-                        // I mean its a read see it later.
-                        break;
+                    p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
+                    p.executedOperations.Add(Tuple.Create(request.ClientID, request.OperationID));
+                    Monitor.Pulse(p.executedOperations);
                 }
             }
-            */
+            
             return new commitReply
             {
                 Ok = true
@@ -430,7 +395,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 if (reply == false)
                     tentativeOk = false;
             }
-
+            Console.WriteLine("Returning tentativeOk = " + tentativeOk);
             return tentativeOk;
         }
 
@@ -439,7 +404,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             try
             {
                 var reply = client.Tentative(new tentativeRequest { ServerID = processId, SequenceNumber = sequenceNumber});
-
+                Console.WriteLine("Received Tentative Reply! " + reply.Ok);
                 lock (tentativeOkReplies)
                 {
                     tentativeOkReplies.Add(reply.Ok);
@@ -457,7 +422,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public bool sendCommit(int clientID, int operationID, int sequenceNumber)
         {
-            Console.WriteLine("|BankBank| Primary sending commit for {0}.", sequenceNumber);
+            Console.WriteLine("|BankBank| Primary sending commit for operation {0}, {1} with sequence Number={2}.", clientID, operationID, sequenceNumber);
             List<bool> commitReplies = new List<bool>();
             foreach (KeyValuePair<int, string> entry in serversAddresses)
             {
@@ -488,9 +453,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
         {
             try
             {
-                var reply = client.Commit(new commitRequest { ClientID = clientID, OperationID = operationID,
-                                                              Slot = slotTime, SequenceNumber = sequenceNumber});
-
+                Console.WriteLine("Sending commit! operationid=" + operationID);
+                var reply = client.Commit(new commitRequest { ClientID = clientID, OperationID = operationID, SequenceNumber = sequenceNumber, Slot = 5});
+                Console.WriteLine("Got Commit reply: " + reply.Ok);
                 lock (commitReplies)
                 {
                     commitReplies.Add(reply.Ok);
