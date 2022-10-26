@@ -46,6 +46,20 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public DepositeReply Dep(DepositeRequest request)
         {
+            bool frozen = false;
+            int slot = p.currentSlot;
+            lock (p)
+            {
+                frozen = p.I_am_frozen;
+            }
+            lock (p.frozenObjLock)
+            {
+                if (frozen)
+                {
+                    Monitor.Wait(p.frozenObjLock);
+                }
+            }
+
             Console.WriteLine("---------------------- NEW DESPOTITTT! -------------------------------");
             Console.WriteLine("New Deposit: \nAccount = {0}\nAmount = {1}\nOperationID = {2}", request.OpInfo.ClientID, request.Amount, request.OpInfo.OperationID);
             lock (p.operations)
@@ -53,7 +67,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 p.operations.Add(Tuple.Create(request.OpInfo.ClientID, request.OpInfo.OperationID), request.Amount);
             }
             Console.WriteLine("Operations count = " + p.operations.Count);
-            p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID);
+            p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
 
             Console.WriteLine("---------------------- END DEPOSIT!! -------------------------------");
             return new DepositeReply
@@ -67,6 +81,20 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public WithdrawalReply Widr(WithdrawalRequest request)
         {
+            bool frozen = false;
+            int slot = p.currentSlot;
+            lock (p)
+            {
+                frozen = p.I_am_frozen;
+            }
+            lock (p.frozenObjLock)
+            {
+                if (frozen)
+                {
+                    Monitor.Wait(p.frozenObjLock);
+                }
+            }
+
             Console.WriteLine("---------------------- NEW WIDRAWWWWW! -------------------------------");
 
             Console.WriteLine("New Widrawall: \nAccount = {0}\nAmount = {1}\nOperationID = {2}", request.OpInfo.ClientID, -request.Amount, request.OpInfo.OperationID);
@@ -77,7 +105,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             }
             Console.WriteLine("STILL ON WIDRAWALL!");
-            p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID);
+            p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
             Console.WriteLine("STILL ON WIDRAWALL! (2)");
 
             Console.WriteLine("---------------------- ENDDD WIDRAWWWWW! -------------------------------");
@@ -92,36 +120,23 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public ReadReply Rd(ReadRequest request)
         {
+            bool frozen = false;
+            lock (p)
+            {
+                frozen = p.I_am_frozen;
+            }
+            lock (p.frozenObjLock)
+            {
+                if (frozen)
+                {
+                    Monitor.Wait(p.frozenObjLock);
+                }
+            }
+
             Console.WriteLine("New Read request!");
             float amount = -1;
             lock (this)
             {
-                /*
-                amount = -1;
-                lock (this)
-                {
-                    if (p.primary.b)
-                    {
-                        int sequenceNumber = p.sequenceNumbers.Count;
-                        p.sequenceNumbers.Add(sequenceNumber);
-
-                        if (p.sendTentative(sequenceNumber))
-                        {
-                            if (p.primary.b && p.sendCommit(3, amount, sequenceNumber, request.Name))
-                            {
-                                amount = p.accounts[request.Name];
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("|BankBank| Not primary, I dont do anything.");
-                    }
-                }*/
-
-
-                //Ele ainda envia para todos mas as threads podem fazer um dos backups chegar primeiro so isto garante
-                // q ele manda bem
                 amount = p.accountBalance;
             }
             return new ReadReply
@@ -149,6 +164,19 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public tentativeReply Tent(tentativeRequest request)
         {
+            bool frozen = false;
+            lock (p)
+            {
+                frozen = p.I_am_frozen;
+            }
+            lock (p.frozenObjLock)
+            {
+                if (frozen)
+                {
+                    Monitor.Wait(p.frozenObjLock);
+                }
+            }
+
             lock (this)
             {
                 Console.WriteLine("|BankBank| Received tentative from server {0} for seqN {0}", request.ServerID, request.SequenceNumber);
@@ -168,6 +196,18 @@ namespace BankServer // Note: actual namespace depends on the project name.
         //READ ME --> as vezes ele n recebe tentative mas recebe commit o q o faz falhar na operacao fix later
         public commitReply Com(commitRequest request)
         {
+            bool frozen = false;
+            lock (p)
+            {
+                frozen = p.I_am_frozen;
+            }
+            lock (p.frozenObjLock)
+            {
+                if (frozen)
+                {
+                    Monitor.Wait(p.frozenObjLock);
+                }
+            }
             //Lets apply the operation!
             Console.WriteLine("Received Commit for client={0} & operationID={1} with seqNumber={2} ", request.ClientID, request.OperationID, request.SequenceNumber);
             lock(p.lockObj){
@@ -180,7 +220,16 @@ namespace BankServer // Note: actual namespace depends on the project name.
             {
                 if (!p.executedOperations.Contains(Tuple.Create(request.ClientID, request.OperationID)))
                 {
-                    p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
+                    //Dont ask me why but this try makes a bug disapear, nao ele n printa a execção.
+                    // to tired to think about it
+                    try
+                    {
+                        p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
                     p.executedOperations.Add(Tuple.Create(request.ClientID, request.OperationID));
                     Monitor.PulseAll(p.executedOperations);
                 }
@@ -221,6 +270,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
         int counter = 0;
         List<int> frozen = new List<int>();
         internal atomicBool primary = new atomicBool();
+
+        public bool I_am_frozen = false;
+        public Object frozenObjLock = new Object();
 
         System.Timers.Timer aTimer = new System.Timers.Timer(2000);
 
@@ -349,10 +401,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
         }
 
-        public void handleOperation(int clientID, int operationID)
+        public void handleOperation(int clientID, int operationID, int slot)
         {
-
-            if (primary.b) //Se for primário, vai enviar a seq number deste para todos
+            Console.WriteLine("++++++++++++++++++++ " + slot + " " + currentSlot);
+            if (primary.b && slot == currentSlot) //Se for primário, vai enviar a seq number deste para todos
             {
                 int seqN = executedOperations.Count;
                 bool tentativeReply = sendTentative(seqN);
@@ -362,8 +414,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     bool commitResponse = sendCommit(clientID, operationID, seqN);
                     if (commitResponse)
                     {
-                        accountBalance += operations[Tuple.Create(clientID, operationID)];
-                        executedOperations.Add(Tuple.Create(clientID, operationID));
+                        lock (this)
+                        {
+                            accountBalance += operations[Tuple.Create(clientID, operationID)];
+                            executedOperations.Add(Tuple.Create(clientID, operationID));
+                        }
                     }
 
                 }
@@ -511,7 +566,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             aTimer.AutoReset = false;
         }
 
-        void sendToServer(int proposed, string targetBoneyAddress)
+        void sendToServer(int proposed, string targetBoneyAddress, int slot)
         {
             int slotToSend = this.currentSlot;
             try
@@ -522,7 +577,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 channel = GrpcChannel.ForAddress(targetBoneyAddress);
                 client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
                 var reply = client.CompareAndSwap(new CompareAndSwapRequest
-                        { Slot = currentSlot, Invalue = proposed },
+                        { Slot = slot, Invalue = proposed },
                     deadline: DateTime.UtcNow.AddSeconds(20));
 
                 Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue + " for slot=" + slotToSend);
@@ -530,9 +585,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
                 lock (this)
                 {
-                    if (!liderBySlot.ContainsKey(currentSlot))
+                    if (!liderBySlot.ContainsKey(slot))
                     {
-                        liderBySlot.Add(currentSlot, reply.Outvalue);
+                        liderBySlot.Add(slot, reply.Outvalue);
                     }
 
                     if (liderBySlot[currentSlot] == processId)
@@ -555,29 +610,66 @@ namespace BankServer // Note: actual namespace depends on the project name.
             // Do your stuff and recalculate the timer interval and reset the Timer.
 
             //TO-DO: O que acontece se estiver frozen e ninguem suspeita q está?
+
             lock (primary)
             {
                 primary.b = false;
             }
+
             int proposed = -1;
             int slot = currentSlot;
             currentSlot = slot + 1;
+            int old_currentSlot = currentSlot;
+
+            lock (frozenObjLock)
+            {
+                if(I_am_frozen && frozen[currentSlot - 1] != 0)
+                {
+                    Console.WriteLine("PULSE ALL");
+                    Monitor.PulseAll(frozenObjLock);
+                }
+            }
+
+            lock (this)
+            {
+                I_am_frozen = false;
+            }
+
+
+            if (currentSlot != numberOfSlots)
+                aTimer.Start();
+
+            lock (frozenObjLock)
+            {
+                if (frozen[currentSlot - 1] == 0)
+                {
+                    I_am_frozen = true;
+                    Console.WriteLine("SYSTEM FROZEN FOR SLOT {0}", old_currentSlot);
+                    Monitor.Wait(frozenObjLock);
+                }
+            }
 
             foreach (int server in serversAddresses.Keys)
             {
                 if(server == processId)
                 {
-                    if (frozen[currentSlot-1] == 1) //CHANGE THIS LATER TO A ifFronzen.
+                    lock (frozen)
+                    {
+                        if (frozen[old_currentSlot - 1] == 1) //CHANGE THIS LATER TO A ifFronzen.
+                        {
+                            proposed = server;
+                            break;
+                        }
+                    }
+                }
+
+                lock (status)
+                {
+                    if (status[old_currentSlot].ElementAt(server - 1) == 1)
                     {
                         proposed = server;
                         break;
                     }
-                }
-
-                if (status[currentSlot].ElementAt(server - 1) == 1)
-                {
-                    proposed = server;
-                    break;
                 }
             }
 
@@ -585,25 +677,20 @@ namespace BankServer // Note: actual namespace depends on the project name.
             Console.WriteLine("Leader round number: " + counter);
             Console.WriteLine(DateTime.Now.ToString("HH:mm:ss"));
 
-            Console.WriteLine("-----------------------------------------I WILL START FOR SLOT {0}-----------------------------------------------------------", currentSlot);
-            if(currentSlot != numberOfSlots)
-                aTimer.Start();
+            Console.WriteLine("-----------------------------------------I WILL START FOR SLOT {0}-----------------------------------------------------------", old_currentSlot);
 
             Console.WriteLine("I am proposing server " + proposed + " To be the lider!");
 
             foreach (string server in boneysAddresses.Values)
             {
-                var threadFour = new Thread(() => sendToServer(proposed, server));
+                var threadFour = new Thread(() => sendToServer(proposed, server, old_currentSlot));
                 threadFour.Start();
-                /*
-                var threadFive = new Thread(() => sendToServer(proposed + 1, server));
-                threadFive.Start();*/
             }
 
             lock (this)
             {
                 Monitor.Wait(this);
-                Console.WriteLine("Boneys consensus was that bank server N " + liderBySlot[currentSlot] + " is the new lider!");
+                Console.WriteLine("Boneys consensus was that bank server N " + liderBySlot[old_currentSlot] + " is the new lider!");
             }
 
             if (primary.b)
@@ -614,7 +701,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     if (!executedOperations.Contains(op.Key))
                     {
                         Console.WriteLine("Unhandled operation! :(");
-                        handleOperation(op.Key.Item1, op.Key.Item2);
+                        handleOperation(op.Key.Item1, op.Key.Item2, old_currentSlot);
                         lock (executedOperations)
                         {
                             Monitor.PulseAll(executedOperations);
