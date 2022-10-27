@@ -224,9 +224,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     // to tired to think about it
                     try
                     {
-                        while (!p.operations.ContainsKey(Tuple.Create(request.ClientID, request.OperationID)))
-                        {
-                            Monitor.Wait(p.operations);
+                        lock(p.operations){
+                            while (!p.operations.ContainsKey(Tuple.Create(request.ClientID, request.OperationID)))
+                            {
+                                Monitor.Wait(p.operations);
+                            }
                         }
                         p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
                     }
