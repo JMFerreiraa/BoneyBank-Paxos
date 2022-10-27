@@ -343,7 +343,8 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
             return new CompareAndSwapReply
             {
-                Outvalue = outv_tmp
+                Outvalue = outv_tmp,
+                Slot = request.Slot
             };
 
         }

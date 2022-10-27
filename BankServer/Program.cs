@@ -65,6 +65,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             lock (p.operations)
             {
                 p.operations.Add(Tuple.Create(request.OpInfo.ClientID, request.OpInfo.OperationID), request.Amount);
+                Monitor.PulseAll(p.operations);
             }
             Console.WriteLine("Operations count = " + p.operations.Count);
             p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
@@ -102,11 +103,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
             lock (p.operations)
             {
                 p.operations.Add(Tuple.Create(request.OpInfo.ClientID, request.OpInfo.OperationID), -request.Amount);
-
+                Monitor.PulseAll(p.operations);
             }
-            Console.WriteLine("STILL ON WIDRAWALL!");
+
             p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
-            Console.WriteLine("STILL ON WIDRAWALL! (2)");
 
             Console.WriteLine("---------------------- ENDDD WIDRAWWWWW! -------------------------------");
 
@@ -224,6 +224,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     // to tired to think about it
                     try
                     {
+                        while (!p.operations.ContainsKey(Tuple.Create(request.ClientID, request.OperationID)))
+                        {
+                            Monitor.Wait(p.operations);
+                        }
                         p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
                     }
                     catch (Exception e)
@@ -581,13 +585,14 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     deadline: DateTime.UtcNow.AddSeconds(20));
 
                 Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue + " for slot=" + slotToSend);
+                
 
 
                 lock (this)
                 {
-                    if (!liderBySlot.ContainsKey(slot))
+                    if (!liderBySlot.ContainsKey(reply.Slot))
                     {
-                        liderBySlot.Add(slot, reply.Outvalue);
+                        liderBySlot.Add(reply.Slot, reply.Outvalue);
                     }
 
                     if (liderBySlot[currentSlot] == processId)

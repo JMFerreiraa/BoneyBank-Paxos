@@ -13,6 +13,7 @@ message CompareAndSwapRequest{
 
 message CompareAndSwapReply{
 	int32 outvalue = 1;
+	int32 slot = 2;
 }
 
 message ConsensusInLearnerRequest{
