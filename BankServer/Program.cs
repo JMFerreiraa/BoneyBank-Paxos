@@ -71,10 +71,15 @@ namespace BankServer // Note: actual namespace depends on the project name.
             p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
             Console.WriteLine("New Deposit: \nAccount = {0}\nAmount = {1}\nOperationID = {2}\nResponse = {3}", request.OpInfo.ClientID, request.Amount, request.OpInfo.OperationID, request.Amount);
             Console.WriteLine("---------------------- END DEPOSIT!! -------------------------------");
+            float f = -1;
+            lock (this)
+            {
+                f = p.accountBalance;
+            }
             return new DepositeReply
             {
                 Ok = true,
-                Amount = p.accountBalance
+                Amount = f
             };
 
         }
@@ -110,11 +115,15 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             Console.WriteLine("End Widrawall: \nAccount = {0}\nAmount = {1}\nOperationID = {2}\nResponse = {3}", request.OpInfo.ClientID, -request.Amount, request.OpInfo.OperationID, p.accountBalance);
             Console.WriteLine("---------------------- ENDDD WIDRAWWWWW! -------------------------------");
-
+            float f = -1;
+            lock (this)
+            {
+                f = p.accountBalance;
+            }
             return new WithdrawalReply
             {
                 Ok = true,
-                Amount = p.accountBalance
+                Amount = f
             };
         }
 

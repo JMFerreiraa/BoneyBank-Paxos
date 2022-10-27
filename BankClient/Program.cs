@@ -71,7 +71,9 @@ namespace bankClient // Note: actual namespace depends on the project name.
 
         void wait(int time)
         {
+            Console.WriteLine("Goodnight");
             Thread.Sleep(time);
+            Console.WriteLine("Good morning");
         }
 
         void sendD(float amount, BankClientCommunications.BankClientCommunicationsClient client)
@@ -97,8 +99,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
                 OperationInfo op = new OperationInfo();
                 op.ClientID = clientId;
                 op.OperationID = clientSequenceNumber;
-                var reply = client.Withdrawal(new WithdrawalRequest { OpInfo = op, Amount = amount },
-                    deadline: DateTime.UtcNow.AddSeconds(20));
+                var reply = client.Withdrawal(new WithdrawalRequest { OpInfo = op, Amount = amount });
                 Console.WriteLine("Received Widraw Response: " + reply.Amount);
             }
             catch
