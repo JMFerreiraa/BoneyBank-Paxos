@@ -24,6 +24,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
         internal object obj = new object();
 
         internal Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
+        internal List<Tuple<string, float>> operations_to_do = new List<Tuple<string, float>>();
 
         int numberOfServers = 0;
 
@@ -70,8 +71,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
 
         void wait(int time)
         {
-            Console.WriteLine(time.ToString());
-            //TODO TIME TRIGGER HERE
+            Thread.Sleep(time);
         }
 
         void sendD(float amount, BankClientCommunications.BankClientCommunicationsClient client)
@@ -169,6 +169,54 @@ namespace bankClient // Note: actual namespace depends on the project name.
             }
         }
 
+        public bool parseClientInput()
+        {
+            var currentDir = Directory.GetParent(System.IO.Directory.GetCurrentDirectory()).Parent.Parent.Parent + "\\ClientInstructions.txt";
+            string[] lines = File.ReadAllLines(currentDir);
+            bool res = false;
+
+            try
+            {
+                foreach (string line in lines)
+                {
+                    string[] config = line.Split(" ");
+                    switch (config[0].ToUpper())
+                    {
+                        case "D":
+                            operations_to_do.Add(Tuple.Create("D", 
+                                float.Parse(config[1], CultureInfo.InvariantCulture.NumberFormat)));
+                            break;
+                        case "W":
+                            operations_to_do.Add(Tuple.Create("W", 
+                                float.Parse(config[1], CultureInfo.InvariantCulture.NumberFormat)));
+                            break;
+                        case "R":
+                            float f = 0;
+                            operations_to_do.Add(Tuple.Create("R", f));
+                            break;
+                        case "S":
+                            operations_to_do.Add(Tuple.Create("S",
+                                float.Parse(config[1], CultureInfo.InvariantCulture.NumberFormat)));
+                            break;
+                        case "DO":
+                            res = Int32.Parse(config[1]) == 1;
+                            break;
+                        case "EXIT":
+                            float f2 = 0;
+                            operations_to_do.Add(Tuple.Create("EXIT", f2));
+                            break;
+                    }
+
+                }
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine("Parser error in client Input");
+                Console.WriteLine(e);
+            }
+            return res;
+        }
+
         static void Main(string[] args)
         {
 
@@ -180,6 +228,8 @@ namespace bankClient // Note: actual namespace depends on the project name.
 
             var p = new Program();
             p.parseConfigFile();
+            bool auto = p.parseClientInput();
+            Console.WriteLine("Automatic input activation status: " + auto);
             p.clientId = Int32.Parse(args[0]);
             p.clientSequenceNumber = 0;
 
@@ -191,7 +241,39 @@ namespace bankClient // Note: actual namespace depends on the project name.
                 servers.Add(new BankClientCommunications.BankClientCommunicationsClient(channel));
             }
 
-            Console.WriteLine("------------------------------------------------CLIENT------------------------------------------------"); ;
+            Console.WriteLine("------------------------------------------------CLIENT------------------------------------------------");
+
+            if (auto)
+            {
+                try
+                {
+                    foreach(Tuple<string, float> t in p.operations_to_do)
+                    {
+                        switch (t.Item1)
+                        {
+                            case "D":
+                                p.deposite(t.Item2, servers);
+                                break;
+                            case "W":
+                                p.withdrawal(t.Item2, servers);
+                                break;
+                            case "R":
+                                p.readBalance(servers);
+                                break;
+                            case "S":
+                                p.wait(Convert.ToInt32(t.Item2));
+                                break;
+                            case "EXIT":
+                                p.on = false;
+                                break;
+                        }
+                    }
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine("Error");
+                }
+            }
 
             while (p.on)
             {
@@ -215,7 +297,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
                             case "S":
                                 p.wait(Int32.Parse(command_words[1]));
                                 break;
-                            case "exit":
+                            case "EXIT":
                                 p.on = false;
                                 //TODO close server
                                 break;
