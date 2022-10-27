@@ -69,7 +69,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
             Console.WriteLine("Operations count = " + p.operations.Count);
             p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
-
+            Console.WriteLine("New Deposit: \nAccount = {0}\nAmount = {1}\nOperationID = {2}\nResponse = {3}", request.OpInfo.ClientID, request.Amount, request.OpInfo.OperationID, request.Amount);
             Console.WriteLine("---------------------- END DEPOSIT!! -------------------------------");
             return new DepositeReply
             {
@@ -108,6 +108,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
 
+            Console.WriteLine("End Widrawall: \nAccount = {0}\nAmount = {1}\nOperationID = {2}\nResponse = {3}", request.OpInfo.ClientID, -request.Amount, request.OpInfo.OperationID, p.accountBalance);
             Console.WriteLine("---------------------- ENDDD WIDRAWWWWW! -------------------------------");
 
             return new WithdrawalReply
@@ -139,6 +140,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
             {
                 amount = p.accountBalance;
             }
+            Console.WriteLine("New Read: Response = {3}", amount);
+);
             return new ReadReply
             {
                 Amount = amount
@@ -586,7 +589,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         { Slot = slot, Invalue = proposed },
                     deadline: DateTime.UtcNow.AddSeconds(20));
 
-                Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue + " for slot=" + slotToSend);
+                Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue + " for slot=" + reply.Slot);
                 
 
 
@@ -632,7 +635,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
             {
                 if(I_am_frozen && frozen[currentSlot - 1] != 0)
                 {
-                    Console.WriteLine("PULSE ALL");
                     Monitor.PulseAll(frozenObjLock);
                 }
             }
@@ -707,7 +709,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 {
                     if (!executedOperations.Contains(op.Key))
                     {
-                        Console.WriteLine("Unhandled operation! :(");
                         handleOperation(op.Key.Item1, op.Key.Item2, old_currentSlot);
                         lock (executedOperations)
                         {
