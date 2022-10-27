@@ -140,8 +140,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             {
                 amount = p.accountBalance;
             }
-            Console.WriteLine("New Read: Response = {3}", amount);
-);
+            Console.WriteLine("New Read: Response = {0}", amount);
             return new ReadReply
             {
                 Amount = amount
