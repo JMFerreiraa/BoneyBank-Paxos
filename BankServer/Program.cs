@@ -432,15 +432,15 @@ namespace BankServer // Note: actual namespace depends on the project name.
             Console.WriteLine("++++++++++++++++++++ " + slot + " " + currentSlot);
             if (primary.b && slot == currentSlot) //Se for primário, vai enviar a seq number deste para todos
             {
-                int seqN = executedOperations.Count;
-                bool tentativeReply = sendTentative(seqN);
-
-                if (tentativeReply) //TODO o que fazer se for false? Tentar com um seqN superior?
+                lock (executedOperations)
                 {
-                    bool commitResponse = sendCommit(clientID, operationID, seqN);
-                    if (commitResponse)
+                    int seqN = executedOperations.Count;
+                    bool tentativeReply = sendTentative(seqN);
+
+                    if (tentativeReply) //TODO o que fazer se for false? Tentar com um seqN superior?
                     {
-                        lock (executedOperations)
+                        bool commitResponse = sendCommit(clientID, operationID, seqN);
+                        if (commitResponse)
                         {
                             if(!executedOperations.Contains(Tuple.Create(clientID, operationID))){
                                 accountBalance += operations[Tuple.Create(clientID, operationID)];
