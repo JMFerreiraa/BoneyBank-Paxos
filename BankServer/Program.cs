@@ -432,6 +432,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             float currentBalance = -1;
             if (primary.b && slot == currentSlot) //Se for primário, vai enviar a seq number deste para todos
             {
+                Console.WriteLine("A tentar obter handle operation lock = " + operationID);
                 lock (executedOperations)
                 {
                     Console.WriteLine("Entrei no lock handle operation OperationID = " + operationID);
