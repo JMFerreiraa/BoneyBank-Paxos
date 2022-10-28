@@ -6,6 +6,7 @@ using System.Threading;
 using System.Data;
 using Google.Protobuf.WellKnownTypes;
 using System.Net.Http.Headers;
+using Exception = System.Exception;
 
 namespace BankServer // Note: actual namespace depends on the project name.
 {
@@ -199,55 +200,70 @@ namespace BankServer // Note: actual namespace depends on the project name.
         //READ ME --> as vezes ele n recebe tentative mas recebe commit o q o faz falhar na operacao fix later
         public commitReply Com(commitRequest request)
         {
-            bool frozen = false;
-            lock (p)
+            try
             {
-                frozen = p.I_am_frozen;
-            }
-            lock (p.frozenObjLock)
-            {
-                if (frozen)
+                bool frozen = false;
+                lock (p)
                 {
-                    Monitor.Wait(p.frozenObjLock);
+                    frozen = p.I_am_frozen;
                 }
-            }
-            //Lets apply the operation!
-            Console.WriteLine("Received Commit for client={0} & operationID={1} with seqNumber={2} ", request.ClientID, request.OperationID, request.SequenceNumber);
-            lock(p.lockObj){
-                while (request.SequenceNumber > p.executedOperations.Count())
-                {
-                    Monitor.Wait(p.lockObj);
-                }
-            }
-            lock (p.executedOperations)
-            {
-                if (!p.executedOperations.Contains(Tuple.Create(request.ClientID, request.OperationID)))
-                {
-                    //Dont ask me why but this try makes a bug disapear, nao ele n printa a execção.
-                    // to tired to think about it
-                    try
-                    {
-                        lock(p.operations){
-                            while (!p.operations.ContainsKey(Tuple.Create(request.ClientID, request.OperationID)))
-                            {
-                                Monitor.Wait(p.operations);
-                            }
-                        }
-                        p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine(e);
-                    }
-                    p.executedOperations.Add(Tuple.Create(request.ClientID, request.OperationID));
-                    Monitor.PulseAll(p.executedOperations);
-                }
-            }
-            lock (p.lockObj)
-            {
-                Monitor.PulseAll(p.lockObj);
-            }
 
+                lock (p.frozenObjLock)
+                {
+                    if (frozen)
+                    {
+                        Monitor.Wait(p.frozenObjLock);
+                    }
+                }
+
+                //Lets apply the operation!
+                Console.WriteLine("Received Commit for client={0} & operationID={1} with seqNumber={2} ",
+                    request.ClientID, request.OperationID, request.SequenceNumber);
+                lock (p.lockObj)
+                {
+                    while (request.SequenceNumber > p.executedOperations.Count())
+                    {
+                        Monitor.Wait(p.lockObj);
+                    }
+                }
+
+                lock (p.operations)
+                {
+                    while (!p.operations.ContainsKey(Tuple.Create(request.ClientID, request.OperationID)))
+                    {
+                        Monitor.Wait(p.operations);
+                    }
+                }
+
+                lock (p.executedOperations)
+                {
+                    if (!p.executedOperations.Contains(Tuple.Create(request.ClientID, request.OperationID)))
+                    {
+                        //Dont ask me why but this try makes a bug disapear, nao ele n printa a execção.
+                        // to tired to think about it
+                        try
+                        {
+                            p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e);
+                        }
+
+                        p.executedOperations.Add(Tuple.Create(request.ClientID, request.OperationID));
+                        Monitor.PulseAll(p.executedOperations);
+                    }
+                }
+
+                lock (p.lockObj)
+                {
+                    Monitor.PulseAll(p.lockObj);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
             return new commitReply
             {
                 Ok = true
@@ -426,9 +442,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     {
                         lock (executedOperations)
                         {
-                            accountBalance += operations[Tuple.Create(clientID, operationID)];
-                            executedOperations.Add(Tuple.Create(clientID, operationID));
-                            currentBalance = accountBalance;
+                            if(!executedOperations.Contains(Tuple.Create(clientID, operationID))){
+                                accountBalance += operations[Tuple.Create(clientID, operationID)];
+                                executedOperations.Add(Tuple.Create(clientID, operationID));
+                                currentBalance = accountBalance;
+                            }
                         }
                     }
                 }
