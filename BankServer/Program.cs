@@ -69,7 +69,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
             Console.WriteLine("Operations count = " + p.operations.Count);
             p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
-            Console.WriteLine("New Deposit: \nAccount = {0}\nAmount = {1}\nOperationID = {2}\nResponse = {3}", request.OpInfo.ClientID, request.Amount, request.OpInfo.OperationID, request.Amount);
+            Console.WriteLine("New Deposit: \nAccount = {0}\nAmount = {1}\nOperationID = {2}\nResponse = {3}", request.OpInfo.ClientID, request.Amount, request.OpInfo.OperationID, p.accountBalance);
             Console.WriteLine("---------------------- END DEPOSIT!! -------------------------------");
             float f = -1;
             lock (this)
