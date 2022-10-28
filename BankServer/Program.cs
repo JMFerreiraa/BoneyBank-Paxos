@@ -431,7 +431,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     bool commitResponse = sendCommit(clientID, operationID, seqN);
                     if (commitResponse)
                     {
-                        lock (this)
+                        lock (executedOperations)
                         {
                             accountBalance += operations[Tuple.Create(clientID, operationID)];
                             executedOperations.Add(Tuple.Create(clientID, operationID));
