@@ -428,12 +428,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public float handleOperation(int clientID, int operationID, int slot)
         {
+            
             float currentBalance = -1;
-            Console.WriteLine("++++++++++++++++++++ " + slot + " " + currentSlot);
             if (primary.b && slot == currentSlot) //Se for primário, vai enviar a seq number deste para todos
             {
                 lock (executedOperations)
                 {
+                    Console.WriteLine("Entrei no lock handle operation OperationID = " + operationID);
                     int seqN = executedOperations.Count;
                     bool tentativeReply = sendTentative(seqN);
 
@@ -449,6 +450,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                             }
                         }
                     }
+                    Console.WriteLine("Sai do lock handle operation OperationID = " + operationID);
                 }
             }
             else //Esperar resposta seq number e esperar ter recebido a seq number anterior :)
