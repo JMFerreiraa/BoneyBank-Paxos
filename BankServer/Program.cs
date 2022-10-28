@@ -62,20 +62,16 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             Console.WriteLine("---------------------- NEW DESPOTITTT! -------------------------------");
             Console.WriteLine("New Deposit: \nAccount = {0}\nAmount = {1}\nOperationID = {2}", request.OpInfo.ClientID, request.Amount, request.OpInfo.OperationID);
+            float f = -1;
             lock (p.operations)
             {
                 p.operations.Add(Tuple.Create(request.OpInfo.ClientID, request.OpInfo.OperationID), request.Amount);
                 Monitor.PulseAll(p.operations);
             }
             Console.WriteLine("Operations count = " + p.operations.Count);
-            p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
+            f = p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
             Console.WriteLine("New Deposit: \nAccount = {0}\nAmount = {1}\nOperationID = {2}\nResponse = {3}", request.OpInfo.ClientID, request.Amount, request.OpInfo.OperationID, p.accountBalance);
             Console.WriteLine("---------------------- END DEPOSIT!! -------------------------------");
-            float f = -1;
-            lock (this)
-            {
-                f = p.accountBalance;
-            }
             return new DepositeReply
             {
                 Ok = true,
@@ -110,16 +106,12 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 p.operations.Add(Tuple.Create(request.OpInfo.ClientID, request.OpInfo.OperationID), -request.Amount);
                 Monitor.PulseAll(p.operations);
             }
-
-            p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
+            float f = -1;
+            f = p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
 
             Console.WriteLine("End Widrawall: \nAccount = {0}\nAmount = {1}\nOperationID = {2}\nResponse = {3}", request.OpInfo.ClientID, -request.Amount, request.OpInfo.OperationID, p.accountBalance);
             Console.WriteLine("---------------------- ENDDD WIDRAWWWWW! -------------------------------");
-            float f = -1;
-            lock (this)
-            {
-                f = p.accountBalance;
-            }
+            
             return new WithdrawalReply
             {
                 Ok = true,
@@ -418,8 +410,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
         }
 
-        public void handleOperation(int clientID, int operationID, int slot)
+        public float handleOperation(int clientID, int operationID, int slot)
         {
+            float currentBalance = -1;
             Console.WriteLine("++++++++++++++++++++ " + slot + " " + currentSlot);
             if (primary.b && slot == currentSlot) //Se for primário, vai enviar a seq number deste para todos
             {
@@ -435,9 +428,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         {
                             accountBalance += operations[Tuple.Create(clientID, operationID)];
                             executedOperations.Add(Tuple.Create(clientID, operationID));
+                            currentBalance = accountBalance;
                         }
                     }
-
                 }
             }
             else //Esperar resposta seq number e esperar ter recebido a seq number anterior :)
@@ -448,8 +441,12 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     {
                         Monitor.Wait(executedOperations);
                     }
+
+                    currentBalance = accountBalance;
                 }
             }
+
+            return currentBalance;
         }
 
         public bool sendTentative(int sequenceNumber)

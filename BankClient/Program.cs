@@ -71,9 +71,8 @@ namespace bankClient // Note: actual namespace depends on the project name.
 
         void wait(int time)
         {
-            Console.WriteLine("Goodnight");
+            Console.WriteLine("Sleeping for " + time + " ms");
             Thread.Sleep(time);
-            Console.WriteLine("Good morning");
         }
 
         void sendD(float amount, BankClientCommunications.BankClientCommunicationsClient client)
