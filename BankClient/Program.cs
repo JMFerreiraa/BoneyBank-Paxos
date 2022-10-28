@@ -205,6 +205,8 @@ namespace bankClient // Note: actual namespace depends on the project name.
                             float f2 = 0;
                             operations_to_do.Add(Tuple.Create("EXIT", f2));
                             break;
+                        default:
+                            break;
                     }
 
                 }
