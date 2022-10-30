@@ -181,13 +181,18 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 }
             }
 
-            lock (this)
+            bool niceTentative = false;
+            lock (p.executedOperations)
             {
                 Console.WriteLine("|BankBank| Received tentative from server {0} for seqN {0}", request.ServerID, request.SequenceNumber);
+                if (request.SequenceNumber >= p.executedOperations.Count)
+                {
+                    niceTentative = true;
+                }
             }
             return new tentativeReply
             {
-                Ok = true
+                Ok = niceTentative
             };
         }
 
@@ -200,6 +205,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         //READ ME --> as vezes ele n recebe tentative mas recebe commit o q o faz falhar na operacao fix later
         public commitReply Com(commitRequest request)
         {
+            bool success = false;
             try
             {
                 bool frozen = false;
@@ -234,7 +240,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         Monitor.Wait(p.operations);
                     }
                 }
-                bool success = false;
                 lock (p.executedOperations)
                 {
                     if (!p.executedOperations.Contains(Tuple.Create(request.ClientID, request.OperationID)))
@@ -247,7 +252,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                             if ((p.accountBalance + p.operations[Tuple.Create(request.ClientID, request.OperationID)]) >= 0)
                             {
                                 p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
-                                success = true;
                             }
                         }
                         catch (Exception e)
@@ -256,6 +260,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         }
                         Monitor.PulseAll(p.executedOperations);
                     }
+                    success = true;
                 }
 
                 lock (p.executedSuccessfulOperatios)
@@ -274,7 +279,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
             return new commitReply
             {
-                Ok = true
+                Ok = success
             };
         }
     }
