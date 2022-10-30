@@ -180,6 +180,15 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     Monitor.Wait(p.frozenObjLock);
                 }
             }
+            /*
+            if (request.ServerID != p.liderBySlot[p.currentSlot]) //Se receber Tentative de um que não é o lider, retorna false!
+            {
+                return new tentativeReply
+                {
+                    Ok = niceTentative
+                };
+            }
+            */
 
             bool niceTentative = false;
             lock (p.executedOperations)
@@ -221,7 +230,15 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         Monitor.Wait(p.frozenObjLock);
                     }
                 }
-
+                /*
+                if (request.ServerID != p.liderBySlot[p.currentSlot]) //Se receber commit de um que não é o lider, retorna false!
+                {
+                    return new commitReply
+                    {
+                        Ok = false
+                    };
+                }
+                */
                 //Lets apply the operation!
                 Console.WriteLine("Received Commit for client={0} & operationID={1} with seqNumber={2} ",
                     request.ClientID, request.OperationID, request.SequenceNumber);
@@ -298,7 +315,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         private Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
         private Dictionary<int, string> boneysAddresses = new Dictionary<int, string>();
         private Dictionary<int, List<int>> status = new Dictionary<int, List<int>>();
-        private Dictionary<int, int> liderBySlot = new Dictionary<int, int>();
+        internal Dictionary<int, int> liderBySlot = new Dictionary<int, int>();
 
         int port;
         int numberOfSlots = 0;
@@ -586,7 +603,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             try
             {
                 Console.WriteLine("Sending commit! operationid=" + operationID);
-                var reply = client.Commit(new commitRequest { ClientID = clientID, OperationID = operationID, SequenceNumber = sequenceNumber, Slot = 5});
+                var reply = client.Commit(new commitRequest { ServerID = processId, ClientID = clientID, OperationID = operationID, SequenceNumber = sequenceNumber});
                 Console.WriteLine("Got Commit reply: " + reply.Ok);
                 lock (commitReplies)
                 {
