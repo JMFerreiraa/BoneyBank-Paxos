@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Data;
 using System.Diagnostics;
 using System.Globalization;
 using System.Threading.Channels;
@@ -22,6 +23,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
         internal int clientSequenceNumber;
         bool on = true; 
         internal object obj = new object();
+        internal List<int> sentRequests = new List<int>();
 
         internal Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
         internal List<Tuple<string, float>> operations_to_do = new List<Tuple<string, float>>();
@@ -31,20 +33,30 @@ namespace bankClient // Note: actual namespace depends on the project name.
         void deposite(float amount, List<BankClientCommunications.BankClientCommunicationsClient> servers)
         {
             clientSequenceNumber++;
-            foreach(BankClientCommunications.BankClientCommunicationsClient client in servers)
+            sentRequests.Add(clientSequenceNumber);
+            foreach (BankClientCommunications.BankClientCommunicationsClient client in servers)
             {
-                var thread = new Thread(() => sendD(amount, client));
+                var thread = new Thread(() => sendD(amount, client, clientSequenceNumber));
                 thread.Start();
+            }
+            lock (obj)
+            {
+                Monitor.Wait(obj);
             }
         }
 
         void withdrawal(float amount, List<BankClientCommunications.BankClientCommunicationsClient> servers)
         {
             clientSequenceNumber++;
+            sentRequests.Add(clientSequenceNumber);
             foreach (BankClientCommunications.BankClientCommunicationsClient client in servers)
             {
-                var thread = new Thread(() => sendW(amount, client));
+                var thread = new Thread(() => sendW(amount, client, clientSequenceNumber));
                 thread.Start();
+            }
+            lock (obj)
+            {
+                Monitor.Wait(obj);
             }
         }
 
@@ -75,35 +87,83 @@ namespace bankClient // Note: actual namespace depends on the project name.
             Thread.Sleep(time);
         }
 
-        void sendD(float amount, BankClientCommunications.BankClientCommunicationsClient client)
+        void sendD(float amount, BankClientCommunications.BankClientCommunicationsClient client, int cs)
         {
             try
             {
                 OperationInfo op = new OperationInfo();
                 op.ClientID = clientId;
-                op.OperationID = clientSequenceNumber;
+                op.OperationID = cs;
+                //IF ALL ERROR HERE might became Stuck ---> time function that detects a deadlock?
                 var reply = client.Deposite(new DepositeRequest { OpInfo = op, Amount = amount });
+                bool pulse = false;
+                lock (sentRequests)
+                {
+                    if (sentRequests.Contains(cs))
+                    {
+                        pulse = true;
+                        sentRequests.Remove(cs);
+                    }
+                }
+                lock (obj)
+                {
+                    if (pulse)
+                    {
+                        Monitor.PulseAll(obj);
+                    }
+                }
+
                 Console.WriteLine("Received Deposite Response: " + reply.Amount);
             }
-            catch
+            catch (RpcException e)
+            {
+                Console.WriteLine(e.Status.StatusCode.ToString());
+                Console.WriteLine("Streaming was cancelled from the client!");
+            }
+            catch (Exception ex)
             {
                 Console.WriteLine("Failed to send request.");
+                Console.WriteLine(ex.ToString());
             }
         }
 
-        void sendW(float amount, BankClientCommunications.BankClientCommunicationsClient client)
+        void sendW(float amount, BankClientCommunications.BankClientCommunicationsClient client, int cs)
         {   
             try
             {
                 OperationInfo op = new OperationInfo();
                 op.ClientID = clientId;
-                op.OperationID = clientSequenceNumber;
+                op.OperationID = cs;
                 var reply = client.Withdrawal(new WithdrawalRequest { OpInfo = op, Amount = amount });
+
+                bool pulse = false;
+                lock (sentRequests)
+                {
+                    if (sentRequests.Contains(cs))
+                    {
+                        pulse = true;
+                        sentRequests.Remove(cs);
+                    }
+                }
+                lock (obj)
+                {
+                    if (pulse)
+                    {
+                        Monitor.PulseAll(obj);
+                    }
+                }
+
                 Console.WriteLine("Received Widraw Response: " + reply.Amount);
             }
-            catch
+            catch (RpcException e)
+            {
+                Console.WriteLine(e.Status.StatusCode.ToString());
+                Console.WriteLine("Streaming was cancelled from the client!");
+            }
+            catch (Exception ex)
             {
                 Console.WriteLine("Failed to send request.");
+                Console.WriteLine(ex.ToString());
             }
         }
 
@@ -116,15 +176,20 @@ namespace bankClient // Note: actual namespace depends on the project name.
                 Console.WriteLine("READ FROM SERVER " + serverN + ": replied with " + reply.Amount);
                 lock (obj)
                 {
-                    Monitor.Pulse(obj);
+                    Monitor.PulseAll(obj);
                 }
             }
-            catch
+            catch (RpcException e)
+            {
+                Console.WriteLine(e.Status.StatusCode.ToString());
+                Console.WriteLine("Streaming was cancelled from the client!");
+            }
+            catch (Exception ex)
             {
                 Console.WriteLine("Failed to send request.");
+                Console.WriteLine(ex.ToString());
             }
         }
-
 
         public void parseConfigFile()
         {
@@ -199,7 +264,18 @@ namespace bankClient // Note: actual namespace depends on the project name.
                                 float.Parse(config[1], CultureInfo.InvariantCulture.NumberFormat)));
                             break;
                         case "DO":
-                            res = Int32.Parse(config[1]) == 1;
+                            switch (config[1])
+                            {
+                                case "true":
+                                    res = true;
+                                    break;
+                                case "yes":
+                                    res = true;
+                                    break;
+                                case "1":
+                                    res = true;
+                                    break;
+                            }
                             break;
                         case "EXIT":
                             float f2 = 0;
@@ -273,7 +349,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
                 }
                 catch(Exception e)
                 {
-                    Console.WriteLine("Error");
+                    Console.WriteLine("Bad Input");
                 }
             }
 
@@ -308,8 +384,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
                 }
                 catch(Exception e)
                 {
-                    Console.WriteLine("Deu Errro!");
-                    Console.WriteLine(e.ToString());
+                    Console.WriteLine("Bad Input!");
                 }
 
             }

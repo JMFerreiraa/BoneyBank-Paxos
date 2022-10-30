@@ -92,6 +92,7 @@ namespace PuppetMaster
             processesList.Add(p.run(5, false));
             processesList.Add(p.run(6, false));
             processesList.Add(p.run(7, false));
+            //processesList.Add(p.run(8, false));
 
             while (true)
             {

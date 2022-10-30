@@ -234,7 +234,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         Monitor.Wait(p.operations);
                     }
                 }
-
+                bool success = false;
                 lock (p.executedOperations)
                 {
                     if (!p.executedOperations.Contains(Tuple.Create(request.ClientID, request.OperationID)))
@@ -243,16 +243,24 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         // to tired to think about it
                         try
                         {
-                            p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
+                            p.executedOperations.Add(Tuple.Create(request.ClientID, request.OperationID));
+                            if ((p.accountBalance + p.operations[Tuple.Create(request.ClientID, request.OperationID)]) >= 0)
+                            {
+                                p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
+                                success = true;
+                            }
                         }
                         catch (Exception e)
                         {
                             Console.WriteLine(e);
                         }
-
-                        p.executedOperations.Add(Tuple.Create(request.ClientID, request.OperationID));
                         Monitor.PulseAll(p.executedOperations);
                     }
+                }
+
+                lock (p.executedSuccessfulOperatios)
+                {
+                    p.executedSuccessfulOperatios.Add(Tuple.Create(request.ClientID, request.OperationID), success);
                 }
 
                 lock (p.lockObj)
@@ -305,6 +313,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         
         internal Dictionary<Tuple<int, int>, float> operations = new Dictionary<Tuple<int, int>, float>();
         internal List<Tuple<int, int>> executedOperations = new List<Tuple<int, int>>();
+        internal Dictionary<Tuple<int, int>, bool> executedSuccessfulOperatios = new Dictionary<Tuple<int, int>, bool>();
 
         public int Port
         {
@@ -429,10 +438,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
         public float handleOperation(int clientID, int operationID, int slot)
         {
             
-            float currentBalance = -1;
+            float currentBalance = 0;
             if (primary.b && slot == currentSlot) //Se for primário, vai enviar a seq number deste para todos
             {
                 Console.WriteLine("A tentar obter handle operation lock = " + operationID);
+                bool success = false;
                 lock (executedOperations)
                 {
                     Console.WriteLine("Entrei no lock handle operation OperationID = " + operationID);
@@ -445,13 +455,21 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         if (commitResponse)
                         {
                             if(!executedOperations.Contains(Tuple.Create(clientID, operationID))){
-                                accountBalance += operations[Tuple.Create(clientID, operationID)];
+                                if ((accountBalance + operations[Tuple.Create(clientID, operationID)]) >= 0)
+                                {
+                                    accountBalance += operations[Tuple.Create(clientID, operationID)];
+                                    success = true;
+                                    currentBalance = accountBalance;
+                                }
                                 executedOperations.Add(Tuple.Create(clientID, operationID));
-                                currentBalance = accountBalance;
                             }
                         }
                     }
                     Console.WriteLine("Sai do lock handle operation OperationID = " + operationID);
+                }
+                lock (executedSuccessfulOperatios)
+                {
+                    executedSuccessfulOperatios.Add(Tuple.Create(clientID, operationID), success);
                 }
             }
             else //Esperar resposta seq number e esperar ter recebido a seq number anterior :)
@@ -462,8 +480,12 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     {
                         Monitor.Wait(executedOperations);
                     }
-
-                    currentBalance = accountBalance;
+                }
+                lock (executedSuccessfulOperatios)
+                {
+                    if (executedSuccessfulOperatios.Keys.Contains(Tuple.Create(clientID, operationID)) &&
+                        executedSuccessfulOperatios[Tuple.Create(clientID, operationID)])
+                        currentBalance = accountBalance;
                 }
             }
 
@@ -612,12 +634,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 channel = GrpcChannel.ForAddress(targetBoneyAddress);
                 client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
                 var reply = client.CompareAndSwap(new CompareAndSwapRequest
-                        { Slot = slot, Invalue = proposed },
-                    deadline: DateTime.UtcNow.AddSeconds(20));
+                        { Slot = slot, Invalue = proposed }/*,
+                    deadline: DateTime.UtcNow.AddSeconds(20)*/);
 
                 Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue + " for slot=" + reply.Slot);
                 
-
 
                 lock (this)
                 {
