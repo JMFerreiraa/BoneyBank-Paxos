@@ -264,17 +264,26 @@ namespace bankClient // Note: actual namespace depends on the project name.
                                 float.Parse(config[1], CultureInfo.InvariantCulture.NumberFormat)));
                             break;
                         case "DO":
-                            switch (config[1])
+                            try
                             {
-                                case "true":
-                                    res = true;
-                                    break;
-                                case "yes":
-                                    res = true;
-                                    break;
-                                case "1":
-                                    res = true;
-                                    break;
+                                switch (config[1])
+                                {
+                                    case "true":
+                                        res = true;
+                                        break;
+                                    case "yes":
+                                        res = true;
+                                        break;
+                                    case "1":
+                                        res = true;
+                                        break;
+                                    default:
+                                        return res;
+                                }
+                            }
+                            catch
+                            {
+                                return res;
                             }
                             break;
                         case "EXIT":
