@@ -180,6 +180,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     Monitor.Wait(p.frozenObjLock);
                 }
             }
+            bool niceTentative = false;
             /*
             if (request.ServerID != p.liderBySlot[p.currentSlot]) //Se receber Tentative de um que não é o lider, retorna false!
             {
@@ -189,8 +190,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 };
             }
             */
-
-            bool niceTentative = false;
+            
             lock (p.executedOperations)
             {
                 Console.WriteLine("|BankBank| Received tentative from server {0} for seqN {0}", request.ServerID, request.SequenceNumber);
@@ -299,6 +299,49 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 Ok = success
             };
         }
+
+
+        public override Task<cleanupReply> Cleanup(
+            cleanupRequest request, ServerCallContext context)
+        {
+            return Task.FromResult(Clean(request));
+        }
+
+        public cleanupReply Clean(cleanupRequest request)
+        {
+            Console.WriteLine("Getting a cleanup request!");
+            bool frozen = false;
+            lock (p)
+            {
+                frozen = p.I_am_frozen;
+            }
+            lock (p.frozenObjLock)
+            {
+                if (frozen)
+                {
+                    Monitor.Wait(p.frozenObjLock);
+                }
+            }
+
+            List<cleanupItem> cleanupList = new List<cleanupItem>();
+            foreach (var op in p.operations)
+            {
+                if (!p.executedOperations.Contains(op.Key))
+                {
+                    cleanupItem item = new cleanupItem();
+                    item.ClientID = op.Key.Item1;
+                    item.OperationID = op.Key.Item2;
+                    cleanupList.Add(item);
+                }
+            }
+
+            return new cleanupReply
+            {
+                CleanupList = { cleanupList }
+            };
+        }
+
+
     }
 
 
@@ -457,7 +500,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
         }
 
-        public float handleOperation(int clientID, int operationID, int slot)
+        public float handleOperation(int clientID, int operationID, int slot, int seq = -1)
         {
             
             float currentBalance = 0;
@@ -468,7 +511,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 lock (executedOperations)
                 {
                     Console.WriteLine("Entrei no lock handle operation OperationID = " + operationID);
-                    int seqN = executedOperations.Count;
+                    int seqN = seq;
+                    if(seq == -1)
+                        seqN = executedOperations.Count;
                     bool tentativeReply = sendTentative(seqN);
 
                     if (tentativeReply) //TODO o que fazer se for false? Tentar com um seqN superior?
@@ -717,6 +762,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
             if (currentSlot != numberOfSlots)
                 aTimer.Start();
 
+
+
             lock (frozenObjLock)
             {
                 if (frozen[currentSlot - 1] == 0)
@@ -774,6 +821,56 @@ namespace BankServer // Note: actual namespace depends on the project name.
             if (primary.b)
             {
                 Console.WriteLine("Now I need to handle stuff: size = " + operations.Count);
+                /*
+                List<Tuple<int, int>> remainingCommits = new List<Tuple<int, int>>();
+                int received_responses = 0;
+                foreach (KeyValuePair<int, string> entry in serversAddresses)
+                {
+                    if (entry.Key != processId)
+                    {
+                        GrpcChannel channel = GrpcChannel.ForAddress(entry.Value);
+                        BankBankCommunications.BankBankCommunicationsClient client =
+                            new BankBankCommunications.BankBankCommunicationsClient(channel);
+                        var thread = new Thread(() =>
+                        {
+                            var reply = client.Cleanup(new cleanupRequest{});
+
+                            lock (remainingCommits)
+                            {
+                                foreach (var entry in reply.CleanupList.ToList())
+                                {
+                                    if(!remainingCommits.Contains(Tuple.Create(entry.ClientID, entry.OperationID)))
+                                        remainingCommits.Add(Tuple.Create(entry.ClientID, entry.OperationID));
+                                }
+
+                                received_responses += 1;
+                                if (received_responses + 1 > serversAddresses.Count() / 2)
+                                {
+                                    Monitor.PulseAll(remainingCommits);
+                                }
+                            }
+
+                        });
+                        thread.Start();
+                    }
+                    lock (remainingCommits)
+                    {
+                        if (received_responses + 1 <= serversAddresses.Count() / 2)
+                        {
+                            Monitor.Wait(remainingCommits);
+                        }
+
+                        foreach (var op in remainingCommits)
+                        {
+                            int index_if_exists =
+                                executedOperations.FindIndex(a => a.Equals(Tuple.Create(op.Item1, op.Item2)));
+
+                            if (index_if_exists != -1)
+                                handleOperation(op.Item1, op.Item2, index_if_exists);
+                        }
+                    }
+                }
+                */
                 foreach (KeyValuePair<Tuple<int, int>, float> op in operations)
                 {
                     if (!executedOperations.Contains(op.Key))

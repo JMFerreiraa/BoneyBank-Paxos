@@ -3,7 +3,9 @@
 service BankBankCommunications{
 	rpc Tentative(tentativeRequest) returns (tentativeReply);
 	rpc Commit(commitRequest) returns (commitReply);
+	rpc Cleanup(cleanupRequest) returns (cleanupReply);
 }
+
 
 message commitRequest{
 	int32 clientID = 1;
@@ -25,4 +27,16 @@ message tentativeRequest{
 
 message tentativeReply{
 	bool ok = 1;
+}
+
+message cleanupItem{
+	int32 clientID = 1;
+	int32 operationID = 2;
+}
+
+message cleanupRequest {
+}
+
+message cleanupReply {
+	repeated cleanupItem cleanupList = 1;
 }
