@@ -10,6 +10,7 @@ message commitRequest{
 	int32 operationID = 2;
 	int32 sequenceNumber = 3;
 	int32 slot = 4; //?????
+	int32 serverID = 5;
 	
 }
 

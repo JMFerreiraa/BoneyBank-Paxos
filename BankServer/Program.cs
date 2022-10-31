@@ -180,14 +180,28 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     Monitor.Wait(p.frozenObjLock);
                 }
             }
+            /*
+            if (request.ServerID != p.liderBySlot[p.currentSlot]) //Se receber Tentative de um que não é o lider, retorna false!
+            {
+                return new tentativeReply
+                {
+                    Ok = niceTentative
+                };
+            }
+            */
 
-            lock (this)
+            bool niceTentative = false;
+            lock (p.executedOperations)
             {
                 Console.WriteLine("|BankBank| Received tentative from server {0} for seqN {0}", request.ServerID, request.SequenceNumber);
+                if (request.SequenceNumber >= p.executedOperations.Count)
+                {
+                    niceTentative = true;
+                }
             }
             return new tentativeReply
             {
-                Ok = true
+                Ok = niceTentative
             };
         }
 
@@ -200,6 +214,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         //READ ME --> as vezes ele n recebe tentative mas recebe commit o q o faz falhar na operacao fix later
         public commitReply Com(commitRequest request)
         {
+            bool success = false;
             try
             {
                 bool frozen = false;
@@ -215,7 +230,15 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         Monitor.Wait(p.frozenObjLock);
                     }
                 }
-
+                /*
+                if (request.ServerID != p.liderBySlot[p.currentSlot]) //Se receber commit de um que não é o lider, retorna false!
+                {
+                    return new commitReply
+                    {
+                        Ok = false
+                    };
+                }
+                */
                 //Lets apply the operation!
                 Console.WriteLine("Received Commit for client={0} & operationID={1} with seqNumber={2} ",
                     request.ClientID, request.OperationID, request.SequenceNumber);
@@ -234,7 +257,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         Monitor.Wait(p.operations);
                     }
                 }
-                bool success = false;
                 lock (p.executedOperations)
                 {
                     if (!p.executedOperations.Contains(Tuple.Create(request.ClientID, request.OperationID)))
@@ -247,7 +269,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                             if ((p.accountBalance + p.operations[Tuple.Create(request.ClientID, request.OperationID)]) >= 0)
                             {
                                 p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
-                                success = true;
                             }
                         }
                         catch (Exception e)
@@ -256,6 +277,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         }
                         Monitor.PulseAll(p.executedOperations);
                     }
+                    success = true;
                 }
 
                 lock (p.executedSuccessfulOperatios)
@@ -274,7 +296,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
             return new commitReply
             {
-                Ok = true
+                Ok = success
             };
         }
     }
@@ -293,7 +315,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         private Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
         private Dictionary<int, string> boneysAddresses = new Dictionary<int, string>();
         private Dictionary<int, List<int>> status = new Dictionary<int, List<int>>();
-        private Dictionary<int, int> liderBySlot = new Dictionary<int, int>();
+        internal Dictionary<int, int> liderBySlot = new Dictionary<int, int>();
 
         int port;
         int numberOfSlots = 0;
@@ -581,7 +603,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             try
             {
                 Console.WriteLine("Sending commit! operationid=" + operationID);
-                var reply = client.Commit(new commitRequest { ClientID = clientID, OperationID = operationID, SequenceNumber = sequenceNumber, Slot = 5});
+                var reply = client.Commit(new commitRequest { ServerID = processId, ClientID = clientID, OperationID = operationID, SequenceNumber = sequenceNumber});
                 Console.WriteLine("Got Commit reply: " + reply.Ok);
                 lock (commitReplies)
                 {
