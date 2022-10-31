@@ -169,27 +169,33 @@ namespace BankServer // Note: actual namespace depends on the project name.
         public tentativeReply Tent(tentativeRequest request)
         {
             bool frozen = false;
+            int slot = p.currentSlot;
             lock (p)
             {
                 frozen = p.I_am_frozen;
             }
-            lock (p.frozenObjLock)
+            lock (p.unblockChannelsBB)
             {
                 if (frozen)
                 {
-                    Monitor.Wait(p.frozenObjLock);
+                    Monitor.Wait(p.unblockChannelsBB);
+                }
+                while (!p.liderBySlot.Keys.Contains(slot))
+                {
+                    Monitor.Wait(p.unblockChannelsBB);
                 }
             }
             bool niceTentative = false;
-            /*
-            if (request.ServerID != p.liderBySlot[p.currentSlot]) //Se receber Tentative de um que não é o lider, retorna false!
+            
+            if (request.ServerID != p.liderBySlot[p.currentSlot]) 
+                //Se receber Tentative de um que não é o lider, retorna false!
             {
                 return new tentativeReply
                 {
                     Ok = niceTentative
                 };
             }
-            */
+            
             
             lock (p.executedOperations)
             {
@@ -215,6 +221,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         public commitReply Com(commitRequest request)
         {
             bool success = false;
+            int slot = p.currentSlot;
             try
             {
                 bool frozen = false;
@@ -223,22 +230,29 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     frozen = p.I_am_frozen;
                 }
 
-                lock (p.frozenObjLock)
+                lock (p.unblockChannelsBB)
                 {
                     if (frozen)
                     {
-                        Monitor.Wait(p.frozenObjLock);
+                        Monitor.Wait(p.unblockChannelsBB);
+                    }
+                    
+                    while (!p.liderBySlot.Keys.Contains(slot))
+                    {
+                        Monitor.Wait(p.unblockChannelsBB);
                     }
                 }
-                /*
-                if (request.ServerID != p.liderBySlot[p.currentSlot]) //Se receber commit de um que não é o lider, retorna false!
+                // If it doesnt contain the current slot it means it was frozen and its not updated
+                if (request.ServerID != p.liderBySlot[p.currentSlot])
+                    //Se receber commit de um que não é o lider, retorna false!
                 {
+                    Console.WriteLine("Commit refused");
                     return new commitReply
                     {
                         Ok = false
                     };
                 }
-                */
+                
                 //Lets apply the operation!
                 Console.WriteLine("Received Commit for client={0} & operationID={1} with seqNumber={2} ",
                     request.ClientID, request.OperationID, request.SequenceNumber);
@@ -371,6 +385,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public bool I_am_frozen = false;
         public Object frozenObjLock = new Object();
+        public Object unblockChannelsBB = new Object();
 
         System.Timers.Timer aTimer = new System.Timers.Timer(2000);
 
@@ -705,19 +720,31 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     deadline: DateTime.UtcNow.AddSeconds(20)*/);
 
                 Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue + " for slot=" + reply.Slot);
-                
-
+                bool unlock = false;
                 lock (this)
                 {
                     if (!liderBySlot.ContainsKey(reply.Slot))
                     {
                         liderBySlot.Add(reply.Slot, reply.Outvalue);
+                        unlock = true;
                     }
 
                     if (liderBySlot[currentSlot] == processId)
                         primary.b = true;
 
                     Monitor.Pulse(this);
+                }
+
+                //I have to guarantee that compare and swaps requests arrive and are process so we know who is the new primary
+                //In the old slot. If we realise the threads early I will have them not being able to find who was the old leader
+                // since it was not updated.
+                lock (unblockChannelsBB)
+                {
+                    if (liderBySlot.Keys.Contains(slot) && unlock)
+                    {
+                        Console.WriteLine("PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP");
+                        Monitor.PulseAll(unblockChannelsBB);
+                    }
                 }
 
                 //READ ME
