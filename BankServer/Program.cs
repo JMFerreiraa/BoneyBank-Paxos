@@ -63,20 +63,27 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             Console.WriteLine("---------------------- NEW DESPOTITTT! -------------------------------");
             Console.WriteLine("New Deposit: \nAccount = {0}\nAmount = {1}\nOperationID = {2}", request.OpInfo.ClientID, request.Amount, request.OpInfo.OperationID);
-            float f = -1;
-            lock (p.operations)
+            try
             {
-                p.operations.Add(Tuple.Create(request.OpInfo.ClientID, request.OpInfo.OperationID), request.Amount);
-                Monitor.PulseAll(p.operations);
+                float f = -1;
+                lock (p.operations)
+                {
+                    p.operations.Add(Tuple.Create(request.OpInfo.ClientID, request.OpInfo.OperationID), request.Amount);
+                    Monitor.PulseAll(p.operations);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
             }
             Console.WriteLine("Operations count = " + p.operations.Count);
-            f = p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
+            //f = p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
             Console.WriteLine("New Deposit: \nAccount = {0}\nAmount = {1}\nOperationID = {2}\nResponse = {3}", request.OpInfo.ClientID, request.Amount, request.OpInfo.OperationID, p.accountBalance);
             Console.WriteLine("---------------------- END DEPOSIT!! -------------------------------");
             return new DepositeReply
             {
                 Ok = true,
-                Amount = f
+                Amount = -1
             };
 
         }
@@ -101,14 +108,21 @@ namespace BankServer // Note: actual namespace depends on the project name.
             Console.WriteLine("---------------------- NEW WIDRAWWWWW! -------------------------------");
 
             Console.WriteLine("New Widrawall: \nAccount = {0}\nAmount = {1}\nOperationID = {2}", request.OpInfo.ClientID, -request.Amount, request.OpInfo.OperationID);
-
-            lock (p.operations)
+            try
             {
-                p.operations.Add(Tuple.Create(request.OpInfo.ClientID, request.OpInfo.OperationID), -request.Amount);
-                Monitor.PulseAll(p.operations);
+                lock (p.operations)
+                {
+                    p.operations.Add(Tuple.Create(request.OpInfo.ClientID, request.OpInfo.OperationID),
+                        -request.Amount);
+                    Monitor.PulseAll(p.operations);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
             }
             float f = -1;
-            f = p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
+            //f = p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
 
             Console.WriteLine("End Widrawall: \nAccount = {0}\nAmount = {1}\nOperationID = {2}\nResponse = {3}", request.OpInfo.ClientID, -request.Amount, request.OpInfo.OperationID, p.accountBalance);
             Console.WriteLine("---------------------- ENDDD WIDRAWWWWW! -------------------------------");
@@ -116,7 +130,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             return new WithdrawalReply
             {
                 Ok = true,
-                Amount = f
+                Amount = 1
             };
         }
 
@@ -198,7 +212,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             
             lock (p.executedOperations)
             {
-                Console.WriteLine("|BankBank| Received tentative from server {0} for seqN {0}", request.ServerID, request.SequenceNumber);
+                Console.WriteLine("|BankBank| Received tentative from server {0} for seqN {1}", request.ServerID, request.SequenceNumber);
                 if (request.SequenceNumber >= p.executedOperations.Count)
                 {
                     niceTentative = true;
@@ -206,7 +220,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
             return new tentativeReply
             {
-                Ok = niceTentative
+                Ok = true
             };
         }
 
@@ -219,6 +233,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
         //READ ME --> as vezes ele n recebe tentative mas recebe commit o q o faz falhar na operacao fix later
         public commitReply Com(commitRequest request)
         {
+
+            Console.WriteLine("FOUYDASS RECEBI A PUTA DE UM COMMIT CARALLHO, TOU BUE FELIX FOUDASS!");
             bool success = false;
             bool mySuccess = false; // MINE DONT TOUCH JOAO, I WILL USE VIOLANCE, necessary to organize responses to client
             try
@@ -236,11 +252,12 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         Monitor.Wait(p.unblockChannelsBB);
                     }
                     
-                    while (!p.liderBySlot.Keys.Contains(p.currentSlot))
+                    while (!p.liderBySlot.Keys.Contains(p.currentSlot) || p.currentSlot < request.Slot)
                     {
                         Monitor.Wait(p.unblockChannelsBB);
                     }
                 }
+
                 // If it doesnt contain the current slot it means it was frozen and its not updated
                 if (request.ServerID != p.liderBySlot[p.currentSlot])
                     //Se receber commit de um que não é o lider, retorna false!
@@ -262,22 +279,24 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         Monitor.Wait(p.lockObj);
                     }
                 }
-
+                
                 lock (p.operations)
                 {
+                    Console.WriteLine("Does operations have the key? " + p.operations.ContainsKey(Tuple.Create(request.ClientID, request.OperationID)));
                     while (!p.operations.ContainsKey(Tuple.Create(request.ClientID, request.OperationID)))
                     {
                         Monitor.Wait(p.operations);
                     }
                 }
+                Console.WriteLine("Entering operation execution");
                 lock (p.executedOperations)
                 {
                     if (!p.executedOperations.Contains(Tuple.Create(request.ClientID, request.OperationID)))
                     {
                         //Dont ask me why but this try makes a bug disapear, nao ele n printa a execção.
-                        // to tired to think about it
                         try
                         {
+                            Console.WriteLine("Doing stufff <3 <3 <3 <3");
                             p.executedOperations.Add(Tuple.Create(request.ClientID, request.OperationID));
                             if ((p.accountBalance + p.operations[Tuple.Create(request.ClientID, request.OperationID)]) >= 0)
                             {
@@ -514,7 +533,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public float handleOperation(int clientID, int operationID, int slot, int seq = -1)
         {
-            
             float currentBalance = 0;
             if (primary.b && slot == currentSlot) //Se for primário, vai enviar a seq number deste para todos
             {
@@ -548,7 +566,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 }
                 lock (executedSuccessfulOperatios)
                 {
-                    executedSuccessfulOperatios.Add(Tuple.Create(clientID, operationID), success);
+                    if(!executedSuccessfulOperatios.ContainsKey(Tuple.Create(clientID, operationID)))
+                        executedSuccessfulOperatios.Add(Tuple.Create(clientID, operationID), success);
                 }
             }
             else //Esperar resposta seq number e esperar ter recebido a seq number anterior :)
@@ -567,7 +586,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         currentBalance = accountBalance;
                 }
             }
-
+            Console.WriteLine("New Balance = " + accountBalance);
             return currentBalance;
         }
 
@@ -663,7 +682,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             try
             {
                 Console.WriteLine("Sending commit! operationid=" + operationID);
-                var reply = client.Commit(new commitRequest { ServerID = processId, ClientID = clientID, OperationID = operationID, SequenceNumber = sequenceNumber});
+                var reply = client.Commit(new commitRequest { ServerID = processId, ClientID = clientID, OperationID = operationID, SequenceNumber = sequenceNumber, Slot = currentSlot});
                 Console.WriteLine("Got Commit reply: " + reply.Ok);
                 lock (commitReplies)
                 {
@@ -872,9 +891,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
                                 }
 
                                 received_responses += 1;
-                                if (received_responses > serversAddresses.Count() / 2)
+                                if (received_responses + 1 > serversAddresses.Count() / 2)
                                 {
-                                    Console.WriteLine("||||||||||||||||||Majoraty clean up request");
                                     Monitor.PulseAll(remainingCommits);
                                 }
                             }
@@ -883,27 +901,33 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         thread.Start();
                     }
                 }
+                
                 lock (remainingCommits)
                 {
-                    Console.WriteLine("||||||||||||||||||LOCK");
-                    while (received_responses <= serversAddresses.Count() / 2)
+                    while (received_responses  + 1 <= serversAddresses.Count() / 2)
                     {
                         Monitor.Wait(remainingCommits);
                     }
-                    Console.WriteLine("||||||||||||||||||NOT LOCK");
-                    foreach (var op in remainingCommits)
+                    Console.WriteLine("I have executed " + executedOperations.Count + " in the past!");
+                    Console.WriteLine("I have " + remainingCommits.Count + " commits to be made AND I LIKE GAYS, MAINLY HUGOS WITH BIG BIG BIG BIG HEART");
+                    foreach (var op in operations.Keys)
                     {
-                        int index_if_exists =
+                        try
+                        {
+                            int index_if_exists =
                             executedOperations.FindIndex(a => a.Equals(Tuple.Create(op.Item1, op.Item2)));
-
-                        if (index_if_exists != -1)
-                            handleOperation(op.Item1, op.Item2, currentSlot, index_if_exists);
-                        else
-                            handleOperation(op.Item1, op.Item2, currentSlot);
+                            if(index_if_exists == -1)
+                                handleOperation(op.Item1, op.Item2, currentSlot);
+                            else
+                                handleOperation(op.Item1, op.Item2, currentSlot, index_if_exists);
+                        }
+                        catch (Exception exc)
+                        {
+                            Console.WriteLine(exc);
+                        }
                     }
                 }
-                
-                
+                /*
                 foreach (KeyValuePair<Tuple<int, int>, float> op in operations)
                 {
                     if (!executedOperations.Contains(op.Key))
@@ -916,6 +940,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         
                     }
                 }
+                */
             }
         }
 
