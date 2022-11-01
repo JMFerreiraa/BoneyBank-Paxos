@@ -169,7 +169,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
         public tentativeReply Tent(tentativeRequest request)
         {
             bool frozen = false;
-            int slot = p.currentSlot;
             lock (p)
             {
                 frozen = p.I_am_frozen;
@@ -180,7 +179,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 {
                     Monitor.Wait(p.unblockChannelsBB);
                 }
-                while (!p.liderBySlot.Keys.Contains(slot))
+                while (!p.liderBySlot.Keys.Contains(p.currentSlot))
                 {
                     Monitor.Wait(p.unblockChannelsBB);
                 }
@@ -221,7 +220,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         public commitReply Com(commitRequest request)
         {
             bool success = false;
-            int slot = p.currentSlot;
+            bool mySuccess = false; // MINE DONT TOUCH JOAO, I WILL USE VIOLANCE, necessary to organize responses to client
             try
             {
                 bool frozen = false;
@@ -237,7 +236,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         Monitor.Wait(p.unblockChannelsBB);
                     }
                     
-                    while (!p.liderBySlot.Keys.Contains(slot))
+                    while (!p.liderBySlot.Keys.Contains(p.currentSlot))
                     {
                         Monitor.Wait(p.unblockChannelsBB);
                     }
@@ -283,7 +282,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
                             if ((p.accountBalance + p.operations[Tuple.Create(request.ClientID, request.OperationID)]) >= 0)
                             {
                                 p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
+                                mySuccess = true;
                             }
+                            // Other access here has locks
+                            p.executedSuccessfulOperatios.Add(Tuple.Create(request.ClientID, request.OperationID), mySuccess);
                         }
                         catch (Exception e)
                         {
@@ -292,11 +294,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         Monitor.PulseAll(p.executedOperations);
                     }
                     success = true;
-                }
-
-                lock (p.executedSuccessfulOperatios)
-                {
-                    p.executedSuccessfulOperatios.Add(Tuple.Create(request.ClientID, request.OperationID), success);
                 }
 
                 lock (p.lockObj)
@@ -893,7 +890,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
                                 executedOperations.FindIndex(a => a.Equals(Tuple.Create(op.Item1, op.Item2)));
 
                             if (index_if_exists != -1)
-                                handleOperation(op.Item1, op.Item2, index_if_exists);
+                                handleOperation(op.Item1, op.Item2, currentSlot, index_if_exists);
+                            else
+                                handleOperation(op.Item1, op.Item2, currentSlot);
                         }
                     }
                 }

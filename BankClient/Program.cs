@@ -135,7 +135,6 @@ namespace bankClient // Note: actual namespace depends on the project name.
                 op.ClientID = clientId;
                 op.OperationID = cs;
                 var reply = client.Withdrawal(new WithdrawalRequest { OpInfo = op, Amount = amount });
-
                 bool pulse = false;
                 lock (sentRequests)
                 {
