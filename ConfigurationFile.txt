@@ -10,6 +10,6 @@ S 4
 T 20:57:20
 D 20
 F 1 (1, N, NS) (2, N, NS) (3, N, NS) (4, N, NS) (5, N, NS) (6, N, NS)
-F 2 (1, N, NS) (2, N, NS) (3, N, NS) (4, N, NS) (5, F, S) (6, N, NS)
-F 3 (1, N, NS) (2, N, NS) (3, N, NS) (4, N, NS) (5, N, NS) (6, N, NS)
+F 2 (1, N, NS) (2, N, NS) (3, N, NS) (4, N, NS) (5, F, NS) (6, N, NS)
+F 3 (1, N, NS) (2, N, NS) (3, N, NS) (4, F, S) (5, N, NS) (6, N, NS)
 F 4 (1, N, NS) (2, N, NS) (3, N, NS) (4, N, NS) (5, N, NS) (6, N, NS)

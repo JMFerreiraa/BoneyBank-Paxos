@@ -112,7 +112,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             Console.WriteLine("End Widrawall: \nAccount = {0}\nAmount = {1}\nOperationID = {2}\nResponse = {3}", request.OpInfo.ClientID, -request.Amount, request.OpInfo.OperationID, p.accountBalance);
             Console.WriteLine("---------------------- ENDDD WIDRAWWWWW! -------------------------------");
-            
+
             return new WithdrawalReply
             {
                 Ok = true,
@@ -596,10 +596,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             //TODO Se houver 1 backup que da false ent aborta?
             bool tentativeOk = true;
-            foreach (bool reply in tentativeOkReplies)
+            lock (tentativeOkReplies)
             {
-                if (reply == false)
-                    tentativeOk = false;
+                foreach (bool reply in tentativeOkReplies)
+                {
+                    if (reply == false)
+                        tentativeOk = false;
+                }
             }
             Console.WriteLine("Returning tentativeOk = " + tentativeOk);
             return tentativeOk;
@@ -739,7 +742,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 {
                     if (liderBySlot.Keys.Contains(slot) && unlock)
                     {
-                        Console.WriteLine("PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP");
                         Monitor.PulseAll(unblockChannelsBB);
                     }
                 }
@@ -845,9 +847,10 @@ namespace BankServer // Note: actual namespace depends on the project name.
             if (primary.b)
             {
                 Console.WriteLine("Now I need to handle stuff: size = " + operations.Count);
-                /*
+                
                 List<Tuple<int, int>> remainingCommits = new List<Tuple<int, int>>();
                 int received_responses = 0;
+
                 foreach (KeyValuePair<int, string> entry in serversAddresses)
                 {
                     if (entry.Key != processId)
@@ -855,6 +858,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         GrpcChannel channel = GrpcChannel.ForAddress(entry.Value);
                         BankBankCommunications.BankBankCommunicationsClient client =
                             new BankBankCommunications.BankBankCommunicationsClient(channel);
+                        Console.WriteLine("||||||||||||||||||Sending clean up request");
                         var thread = new Thread(() =>
                         {
                             var reply = client.Cleanup(new cleanupRequest{});
@@ -868,8 +872,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
                                 }
 
                                 received_responses += 1;
-                                if (received_responses + 1 > serversAddresses.Count() / 2)
+                                if (received_responses > serversAddresses.Count() / 2)
                                 {
+                                    Console.WriteLine("||||||||||||||||||Majoraty clean up request");
                                     Monitor.PulseAll(remainingCommits);
                                 }
                             }
@@ -877,26 +882,28 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         });
                         thread.Start();
                     }
-                    lock (remainingCommits)
+                }
+                lock (remainingCommits)
+                {
+                    Console.WriteLine("||||||||||||||||||LOCK");
+                    while (received_responses <= serversAddresses.Count() / 2)
                     {
-                        if (received_responses + 1 <= serversAddresses.Count() / 2)
-                        {
-                            Monitor.Wait(remainingCommits);
-                        }
+                        Monitor.Wait(remainingCommits);
+                    }
+                    Console.WriteLine("||||||||||||||||||NOT LOCK");
+                    foreach (var op in remainingCommits)
+                    {
+                        int index_if_exists =
+                            executedOperations.FindIndex(a => a.Equals(Tuple.Create(op.Item1, op.Item2)));
 
-                        foreach (var op in remainingCommits)
-                        {
-                            int index_if_exists =
-                                executedOperations.FindIndex(a => a.Equals(Tuple.Create(op.Item1, op.Item2)));
-
-                            if (index_if_exists != -1)
-                                handleOperation(op.Item1, op.Item2, currentSlot, index_if_exists);
-                            else
-                                handleOperation(op.Item1, op.Item2, currentSlot);
-                        }
+                        if (index_if_exists != -1)
+                            handleOperation(op.Item1, op.Item2, currentSlot, index_if_exists);
+                        else
+                            handleOperation(op.Item1, op.Item2, currentSlot);
                     }
                 }
-                */
+                
+                
                 foreach (KeyValuePair<Tuple<int, int>, float> op in operations)
                 {
                     if (!executedOperations.Contains(op.Key))
