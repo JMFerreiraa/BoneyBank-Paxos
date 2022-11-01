@@ -63,9 +63,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             Console.WriteLine("---------------------- NEW DESPOTITTT! -------------------------------");
             Console.WriteLine("New Deposit: \nAccount = {0}\nAmount = {1}\nOperationID = {2}", request.OpInfo.ClientID, request.Amount, request.OpInfo.OperationID);
+            float f = -1;
             try
             {
-                float f = -1;
                 lock (p.operations)
                 {
                     p.operations.Add(Tuple.Create(request.OpInfo.ClientID, request.OpInfo.OperationID), request.Amount);
@@ -77,13 +77,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 Console.WriteLine(e);
             }
             Console.WriteLine("Operations count = " + p.operations.Count);
-            //f = p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
+            f = p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
             Console.WriteLine("New Deposit: \nAccount = {0}\nAmount = {1}\nOperationID = {2}\nResponse = {3}", request.OpInfo.ClientID, request.Amount, request.OpInfo.OperationID, p.accountBalance);
             Console.WriteLine("---------------------- END DEPOSIT!! -------------------------------");
             return new DepositeReply
             {
                 Ok = true,
-                Amount = -1
+                Amount = f
             };
 
         }
@@ -122,7 +122,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 Console.WriteLine(e);
             }
             float f = -1;
-            //f = p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
+            f = p.handleOperation(request.OpInfo.ClientID, request.OpInfo.OperationID, slot);
 
             Console.WriteLine("End Widrawall: \nAccount = {0}\nAmount = {1}\nOperationID = {2}\nResponse = {3}", request.OpInfo.ClientID, -request.Amount, request.OpInfo.OperationID, p.accountBalance);
             Console.WriteLine("---------------------- ENDDD WIDRAWWWWW! -------------------------------");
@@ -130,7 +130,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             return new WithdrawalReply
             {
                 Ok = true,
-                Amount = 1
+                Amount = f
             };
         }
 
@@ -200,14 +200,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
             bool niceTentative = false;
             
-            if (request.ServerID != p.liderBySlot[p.currentSlot]) 
-                //Se receber Tentative de um que não é o lider, retorna false!
-            {
-                return new tentativeReply
-                {
-                    Ok = niceTentative
-                };
-            }
             
             
             lock (p.executedOperations)
@@ -352,19 +344,23 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     Monitor.Wait(p.frozenObjLock);
                 }
             }
-
             List<cleanupItem> cleanupList = new List<cleanupItem>();
-            foreach (var op in p.operations)
+            lock (p.operations)
             {
-                if (!p.executedOperations.Contains(op.Key))
-                {
-                    cleanupItem item = new cleanupItem();
-                    item.ClientID = op.Key.Item1;
-                    item.OperationID = op.Key.Item2;
-                    cleanupList.Add(item);
+                lock (p.executedOperations){
+                    foreach (var op in p.operations)
+                    {
+                        if (!p.executedOperations.Contains(op.Key))
+                        {
+                            cleanupItem item = new cleanupItem();
+                            item.ClientID = op.Key.Item1;
+                            item.OperationID = op.Key.Item2;
+                            cleanupList.Add(item);
+                        }
+                    }
+                
                 }
             }
-
             return new cleanupReply
             {
                 CleanupList = { cleanupList }
@@ -665,6 +661,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 }
             }
 
+            bool responseCommit = true;
             lock(commitReplies)
             {
                 if (commitReplies.Count() + 1 <= serversAddresses.Count() / 2)
@@ -672,8 +669,17 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     Monitor.Wait(commitReplies);
                 }
 
+                foreach (bool resp in commitReplies)
+                {
+                    if (resp == false)
+                    {
+                        responseCommit = false;
+                    }
+                }
             }
-            return true;
+
+            
+            return responseCommit;
         }
 
         public void sendC(int clientID, int operationID, int sequenceNumber,
@@ -912,6 +918,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     Console.WriteLine("I have " + remainingCommits.Count + " commits to be made AND I LIKE GAYS, MAINLY HUGOS WITH BIG BIG BIG BIG HEART");
                     foreach (var op in operations.Keys)
                     {
+                        Console.WriteLine("LLALALALAL ---- LALALALLALA ----- TRYING TO COMMIT OPERATION " + op.Item2 + "OUT OF " + operations.Count);
                         try
                         {
                             int index_if_exists =
@@ -927,20 +934,21 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         }
                     }
                 }
-                /*
-                foreach (KeyValuePair<Tuple<int, int>, float> op in operations)
-                {
-                    if (!executedOperations.Contains(op.Key))
+                lock(operations){
+                    lock (executedOperations)
                     {
-                        handleOperation(op.Key.Item1, op.Key.Item2, old_currentSlot);
-                        lock (executedOperations)
+                        foreach (KeyValuePair<Tuple<int, int>, float> op in operations)
                         {
-                            Monitor.PulseAll(executedOperations);
+                            if (!executedOperations.Contains(op.Key))
+                            {
+                                Console.WriteLine("LOLOLOLOLOL ---- LOOLOLOLOLOLOLO ----- TRYING TO COMMIT OPERATION " + op.Key.Item1);
+
+                                handleOperation(op.Key.Item1, op.Key.Item2, currentSlot);
+                                Monitor.PulseAll(executedOperations);
+                            }
                         }
-                        
                     }
                 }
-                */
             }
         }
 
