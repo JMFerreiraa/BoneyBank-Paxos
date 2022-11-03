@@ -55,7 +55,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
             lock (p.frozenObjLock)
             {
-                if (frozen)
+                if (frozen || p.doingMain)
                 {
                     Monitor.Wait(p.frozenObjLock);
                 }
@@ -99,7 +99,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
             lock (p.frozenObjLock)
             {
-                if (frozen)
+                if (frozen || p.doingMain)
                 {
                     Monitor.Wait(p.frozenObjLock);
                 }
@@ -199,9 +199,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 }
             }
             bool niceTentative = false;
-            
-            
-            
+
+
+
             lock (p.executedOperations)
             {
                 Console.WriteLine("|BankBank| Received tentative from server {0} for seqN {1}", request.ServerID, request.SequenceNumber);
@@ -226,7 +226,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         public commitReply Com(commitRequest request)
         {
 
-            Console.WriteLine("FOUYDASS RECEBI A PUTA DE UM COMMIT CARALLHO, TOU BUE FELIX FOUDASS!");
+            Console.WriteLine("RECEBI UM COMMIT! ESTOU MUITO FELIZ!!!!");
             bool success = false;
             bool mySuccess = false; // MINE DONT TOUCH JOAO, I WILL USE VIOLANCE, necessary to organize responses to client
             try
@@ -243,7 +243,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     {
                         Monitor.Wait(p.unblockChannelsBB);
                     }
-                    
+
                     while (!p.liderBySlot.Keys.Contains(p.currentSlot) || p.currentSlot < request.Slot)
                     {
                         Monitor.Wait(p.unblockChannelsBB);
@@ -252,7 +252,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
                 // If it doesnt contain the current slot it means it was frozen and its not updated
                 if (request.ServerID != p.liderBySlot[p.currentSlot])
-                    //Se receber commit de um que não é o lider, retorna false!
+                //Se receber commit de um que não é o lider, retorna false!
                 {
                     Console.WriteLine("Commit refused");
                     return new commitReply
@@ -260,22 +260,18 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         Ok = false
                     };
                 }
-                
-                //Lets apply the operation!
-                Console.WriteLine("Received Commit for client={0} & operationID={1} with seqNumber={2} when slot={3} ",
-                    request.ClientID, request.OperationID, request.SequenceNumber, request.Slot);
-                Console.WriteLine("CURRENT EO SIZE " + p.executedOperations.Count());
 
+                //Lets apply the operation!
+                Console.WriteLine("Received Commit for client={0} & operationID={1} with seqNumber={2} ",
+                    request.ClientID, request.OperationID, request.SequenceNumber);
                 lock (p.lockObj)
                 {
                     while (request.SequenceNumber > p.executedOperations.Count())
                     {
-                        Console.WriteLine("DEAD");
                         Monitor.Wait(p.lockObj);
                     }
-                    Console.WriteLine("ALIVE");
                 }
-                
+
                 lock (p.operations)
                 {
                     Console.WriteLine("Does operations have the key? " + p.operations.ContainsKey(Tuple.Create(request.ClientID, request.OperationID)));
@@ -351,7 +347,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
             List<cleanupItem> cleanupList = new List<cleanupItem>();
             lock (p.operations)
             {
-                lock (p.executedOperations){
+                lock (p.executedOperations)
+                {
                     foreach (var op in p.operations)
                     {
                         if (!p.executedOperations.Contains(op.Key))
@@ -362,7 +359,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                             cleanupList.Add(item);
                         }
                     }
-                
+
                 }
             }
             return new cleanupReply
@@ -401,12 +398,15 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public bool I_am_frozen = false;
         public Object frozenObjLock = new Object();
+        public Object frozenObjLockMain = new Object();
         public Object unblockChannelsBB = new Object();
+
+        public bool doingMain = false;
 
         System.Timers.Timer aTimer = new System.Timers.Timer(2000);
 
         internal float accountBalance = 0;
-        
+
         internal Dictionary<Tuple<int, int>, float> operations = new Dictionary<Tuple<int, int>, float>();
         internal List<Tuple<int, int>> executedOperations = new List<Tuple<int, int>>();
         internal Dictionary<Tuple<int, int>, bool> executedSuccessfulOperatios = new Dictionary<Tuple<int, int>, bool>();
@@ -429,7 +429,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 switch (config[0])
                 {
                     case "P":
-  
+
                         switch (config[2])
                         {
                             case "boney":
@@ -474,10 +474,12 @@ namespace BankServer // Note: actual namespace depends on the project name.
                                 if (state[1] == "N")
                                     frozen.Add(1);
                             }
-                            if (state[2] == "NS") {
+                            if (state[2] == "NS")
+                            {
                                 stateList.Add(1);
                             }
-                            else if (state[2] == "S") { 
+                            else if (state[2] == "S")
+                            {
                                 stateList.Add(0);
                             }
                         }
@@ -492,10 +494,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
             port = Int32.Parse(processUrl.Split(":")[2]);
 
             int debug = 0;
-            if(debug == 1) {
+            if (debug == 1)
+            {
                 Console.WriteLine("Initiating Config Parse checker");
                 Console.WriteLine("Clients:");
-                foreach(int c in clientsAddresses.Keys)
+                foreach (int c in clientsAddresses.Keys)
                 {
                     Console.WriteLine(c);
                 }
@@ -522,7 +525,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 foreach (int server in serversAddresses.Keys)
                 {
                     Console.WriteLine("Testing Server " + server);
-                    foreach(int element in status[1])
+                    foreach (int element in status[1])
                     {
                         Console.WriteLine(element);
                     }
@@ -542,7 +545,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 {
                     Console.WriteLine("Entrei no lock handle operation OperationID = " + operationID);
                     int seqN = seq;
-                    if(seq == -1)
+                    if (seq == -1)
                         seqN = executedOperations.Count;
                     bool tentativeReply = sendTentative(seqN);
 
@@ -551,7 +554,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         bool commitResponse = sendCommit(clientID, operationID, seqN);
                         if (commitResponse)
                         {
-                            if(!executedOperations.Contains(Tuple.Create(clientID, operationID))){
+                            if (!executedOperations.Contains(Tuple.Create(clientID, operationID)))
+                            {
                                 if ((accountBalance + operations[Tuple.Create(clientID, operationID)]) >= 0)
                                 {
                                     accountBalance += operations[Tuple.Create(clientID, operationID)];
@@ -561,12 +565,21 @@ namespace BankServer // Note: actual namespace depends on the project name.
                                 executedOperations.Add(Tuple.Create(clientID, operationID));
                             }
                         }
+                        else
+                        {
+                            lock (executedSuccessfulOperatios)
+                            {
+                                if (executedSuccessfulOperatios.Keys.Contains(Tuple.Create(clientID, operationID)) &&
+                                    executedSuccessfulOperatios[Tuple.Create(clientID, operationID)])
+                                    currentBalance = accountBalance;
+                            }
+                        }
                     }
                     Console.WriteLine("Sai do lock handle operation OperationID = " + operationID);
                 }
                 lock (executedSuccessfulOperatios)
                 {
-                    if(!executedSuccessfulOperatios.ContainsKey(Tuple.Create(clientID, operationID)))
+                    if (!executedSuccessfulOperatios.ContainsKey(Tuple.Create(clientID, operationID)))
                         executedSuccessfulOperatios.Add(Tuple.Create(clientID, operationID), success);
                 }
             }
@@ -595,17 +608,17 @@ namespace BankServer // Note: actual namespace depends on the project name.
             List<bool> tentativeOkReplies = new List<bool>();
             foreach (KeyValuePair<int, string> entry in serversAddresses)
             {
-                if(entry.Key != processId)
+                if (entry.Key != processId)
                 {
                     Console.WriteLine("|BankBank| Primary sending sequenceNumber {0} to server {1}.", sequenceNumber, entry.Key);
                     GrpcChannel channel = GrpcChannel.ForAddress(entry.Value);
-                    BankBankCommunications.BankBankCommunicationsClient client = 
+                    BankBankCommunications.BankBankCommunicationsClient client =
                         new BankBankCommunications.BankBankCommunicationsClient(channel);
                     var thread = new Thread(() => sendT(sequenceNumber, client, tentativeOkReplies));
                     thread.Start();
                 }
             }
-            lock(tentativeOkReplies)
+            lock (tentativeOkReplies)
             {
                 if (tentativeOkReplies.Count() + 1 <= serversAddresses.Count() / 2)
                 {
@@ -631,7 +644,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         {
             try
             {
-                var reply = client.Tentative(new tentativeRequest { ServerID = processId, SequenceNumber = sequenceNumber});
+                var reply = client.Tentative(new tentativeRequest { ServerID = processId, SequenceNumber = sequenceNumber });
                 Console.WriteLine("Received Tentative Reply! " + reply.Ok);
                 lock (tentativeOkReplies)
                 {
@@ -660,13 +673,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     GrpcChannel channel = GrpcChannel.ForAddress(entry.Value);
                     BankBankCommunications.BankBankCommunicationsClient client =
                         new BankBankCommunications.BankBankCommunicationsClient(channel);
-                    var thread = new Thread(() => sendC(clientID, operationID,  sequenceNumber, client, commitReplies));
+                    var thread = new Thread(() => sendC(clientID, operationID, sequenceNumber, client, commitReplies));
                     thread.Start();
                 }
             }
 
             bool responseCommit = true;
-            lock(commitReplies)
+            lock (commitReplies)
             {
                 if (commitReplies.Count() + 1 <= serversAddresses.Count() / 2)
                 {
@@ -682,7 +695,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 }
             }
 
-            
+
             return responseCommit;
         }
 
@@ -692,12 +705,12 @@ namespace BankServer // Note: actual namespace depends on the project name.
             try
             {
                 Console.WriteLine("Sending commit! operationid=" + operationID);
-                var reply = client.Commit(new commitRequest { ServerID = processId, ClientID = clientID, OperationID = operationID, SequenceNumber = sequenceNumber, Slot = currentSlot});
+                var reply = client.Commit(new commitRequest { ServerID = processId, ClientID = clientID, OperationID = operationID, SequenceNumber = sequenceNumber, Slot = currentSlot });
                 Console.WriteLine("Got Commit reply: " + reply.Ok);
                 lock (commitReplies)
                 {
                     commitReplies.Add(reply.Ok);
-                    if(commitReplies.Count() + 1 > serversAddresses.Count() / 2)
+                    if (commitReplies.Count() + 1 > serversAddresses.Count() / 2)
                     {
                         Monitor.PulseAll(commitReplies);
                     }
@@ -729,7 +742,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             Console.WriteLine(now.ToString());
             Console.WriteLine(activationTime.ToString());
 
-            aTimer = new System.Timers.Timer(slotTime*1000);
+            aTimer = new System.Timers.Timer(slotTime * 1000);
             aTimer.Elapsed += findLider;
             aTimer.AutoReset = false;
         }
@@ -745,7 +758,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 channel = GrpcChannel.ForAddress(targetBoneyAddress);
                 client = new BoneyServerCommunications.BoneyServerCommunicationsClient(channel);
                 var reply = client.CompareAndSwap(new CompareAndSwapRequest
-                        { Slot = slot, Invalue = proposed }/*,
+                { Slot = slot, Invalue = proposed }/*,
                     deadline: DateTime.UtcNow.AddSeconds(20)*/);
 
                 Console.WriteLine("SERVER " + targetBoneyAddress + ": Consensed value was = " + reply.Outvalue + " for slot=" + reply.Slot);
@@ -799,12 +812,23 @@ namespace BankServer // Note: actual namespace depends on the project name.
             int slot = currentSlot;
             currentSlot = slot + 1;
             int old_currentSlot = currentSlot;
+            bool unlock = false;
 
             lock (frozenObjLock)
             {
-                if(I_am_frozen && frozen[currentSlot - 1] != 0)
+                if (I_am_frozen && frozen[currentSlot - 1] != 0)
                 {
                     Monitor.PulseAll(frozenObjLock);
+                    unlock = true;
+                }
+            }
+            lock (frozenObjLockMain)
+            {
+                doingMain = true;
+                if (I_am_frozen && frozen[currentSlot - 1] != 0)
+                {
+                    Monitor.PulseAll(frozenObjLockMain);
+                    unlock = true;
                 }
             }
 
@@ -819,19 +843,19 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
 
 
-            lock (frozenObjLock)
+            lock (frozenObjLockMain)
             {
                 if (frozen[currentSlot - 1] == 0)
                 {
                     I_am_frozen = true;
                     Console.WriteLine("SYSTEM FROZEN FOR SLOT {0}", old_currentSlot);
-                    Monitor.Wait(frozenObjLock);
+                    Monitor.Wait(frozenObjLockMain);
                 }
             }
 
             foreach (int server in serversAddresses.Keys)
             {
-                if(server == processId)
+                if (server == processId)
                 {
                     lock (frozen)
                     {
@@ -872,107 +896,99 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 Monitor.Wait(this);
                 Console.WriteLine("Boneys consensus was that bank server N " + liderBySlot[old_currentSlot] + " is the new lider!");
             }
-
-            if (primary.b)
+            lock (unblockChannelsBB)
             {
-                Console.WriteLine("##############################################");
-                Console.WriteLine("Now I need to handle stuff: size = " + operations.Count);
-                
-                List<Tuple<int, int>> remainingCommits = new List<Tuple<int, int>>();
-                int received_responses = 0;
-                int number_of_expected_anwsers = 0;
-                Console.WriteLine("|!|");
-                try
+                if (liderBySlot[old_currentSlot] == processId)
                 {
-                    Console.WriteLine("|!|");
-                    for (int i = 0; i < numberOfServers; i++)
+                    Console.WriteLine("Now I need to handle stuff: size = " + operations.Count);
+
+                    List<Tuple<int, int>> remainingCommits = new List<Tuple<int, int>>();
+                    int received_responses = 0;
+
+                    foreach (KeyValuePair<int, string> entry in serversAddresses)
                     {
-                        if (i >= boneysAddresses.Count && status[currentSlot][i] == 1)
+                        if (entry.Key != processId)
                         {
-                            number_of_expected_anwsers++;
+                            GrpcChannel channel = GrpcChannel.ForAddress(entry.Value);
+                            BankBankCommunications.BankBankCommunicationsClient client =
+                                new BankBankCommunications.BankBankCommunicationsClient(channel);
+                            Console.WriteLine("||||||||||||||||||Sending clean up request");
+                            var thread = new Thread(() =>
+                            {
+                                var reply = client.Cleanup(new cleanupRequest { });
+
+                                lock (remainingCommits)
+                                {
+                                    foreach (var entry in reply.CleanupList.ToList())
+                                    {
+                                        if (!remainingCommits.Contains(Tuple.Create(entry.ClientID, entry.OperationID)))
+                                            remainingCommits.Add(Tuple.Create(entry.ClientID, entry.OperationID));
+                                    }
+
+                                    received_responses += 1;
+                                    if (received_responses + 1 > serversAddresses.Count() / 2)
+                                    {
+                                        Monitor.PulseAll(remainingCommits);
+                                    }
+                                }
+
+                            });
+                            thread.Start();
                         }
                     }
-                    Console.WriteLine("|!|");
-                }
-                catch(Exception exp)
-                {
-                    Console.WriteLine(exp);
-                }
-                Console.WriteLine(number_of_expected_anwsers);
-                foreach (KeyValuePair<int, string> entry in serversAddresses)
-                {
-                    if (entry.Key != processId)
+
+                    lock (remainingCommits)
                     {
-                        GrpcChannel channel = GrpcChannel.ForAddress(entry.Value);
-                        BankBankCommunications.BankBankCommunicationsClient client =
-                            new BankBankCommunications.BankBankCommunicationsClient(channel);
-                        Console.WriteLine("||||||||||||||||||Sending clean up request");
-                        var thread = new Thread(() =>
+                        while (received_responses + 1 <= serversAddresses.Count() / 2)
                         {
-                            var reply = client.Cleanup(new cleanupRequest{});
-
-                            lock (remainingCommits)
+                            Monitor.Wait(remainingCommits);
+                        }
+                        Console.WriteLine("I have executed " + executedOperations.Count + " in the past!");
+                        Console.WriteLine("I have " + remainingCommits.Count + " commits to be made AND I LIKE GAYS, MAINLY HUGOS WITH BIG BIG BIG BIG HEART");
+                        foreach (var op in operations.Keys)
+                        {
+                            Console.WriteLine("LLALALALAL ---- LALALALLALA ----- TRYING TO COMMIT OPERATION " + op.Item2 + "OUT OF " + operations.Count);
+                            try
                             {
-                                foreach (var entry in reply.CleanupList.ToList())
-                                {
-                                    if(!remainingCommits.Contains(Tuple.Create(entry.ClientID, entry.OperationID)))
-                                        remainingCommits.Add(Tuple.Create(entry.ClientID, entry.OperationID));
-                                }
-
-                                received_responses += 1;
-                              
-                                if (received_responses == number_of_expected_anwsers -1 )
-                                {
-                                    Monitor.PulseAll(remainingCommits);
-                                }
+                                int index_if_exists =
+                                executedOperations.FindIndex(a => a.Equals(Tuple.Create(op.Item1, op.Item2)));
+                                if (index_if_exists == -1)
+                                    handleOperation(op.Item1, op.Item2, old_currentSlot);
+                                else
+                                    handleOperation(op.Item1, op.Item2, old_currentSlot, index_if_exists);
                             }
-
-                        });
-                        thread.Start();
-                    }
-                }
-                
-                lock (remainingCommits)
-                {
-                    while (received_responses < number_of_expected_anwsers - 1)
-                    {
-                        Monitor.Wait(remainingCommits);
-                    }
-                    Console.WriteLine("I have executed " + executedOperations.Count + " in the past!");
-                    Console.WriteLine("I have " + remainingCommits.Count + " commits to be made AND I LIKE GAYS, MAINLY HUGOS WITH BIG BIG BIG BIG HEART");
-                    foreach (var op in remainingCommits)
-                    {
-                        Console.WriteLine("LLALALALAL ---- LALALALLALA ----- TRYING TO COMMIT OPERATION " + op.Item2 + " OUT OF " + remainingCommits.Count);
-                        try
-                        {
-                            float a = 0;
-                            int index_if_exists =
-                            executedOperations.FindIndex(a => a.Equals(Tuple.Create(op.Item1, op.Item2)));
-                            if (index_if_exists == -1)
-                                a = handleOperation(op.Item1, op.Item2, currentSlot);
-                            else
-                                a = handleOperation(op.Item1, op.Item2, currentSlot, index_if_exists);
-                        }
-                        catch (Exception exc)
-                        {
-                            Console.WriteLine(exc);
-                        }
-                    }
-                }
-                lock(operations){
-                    lock (executedOperations)
-                    {
-                        foreach (KeyValuePair<Tuple<int, int>, float> op in operations)
-                        {
-                            if (!executedOperations.Contains(op.Key))
+                            catch (Exception exc)
                             {
-                                Console.WriteLine("LOLOLOLOLOL ---- LOOLOLOLOLOLOLO ----- TRYING TO COMMIT OPERATION " + op.Key.Item1);
-
-                                handleOperation(op.Key.Item1, op.Key.Item2, currentSlot);
-                                Monitor.PulseAll(executedOperations);
+                                Console.WriteLine(exc);
                             }
                         }
                     }
+                    lock (operations)
+                    {
+                        lock (executedOperations)
+                        {
+                            foreach (KeyValuePair<Tuple<int, int>, float> op in operations)
+                            {
+                                if (!executedOperations.Contains(op.Key))
+                                {
+                                    Console.WriteLine("LOLOLOLOLOL ---- LOOLOLOLOLOLOLO ----- TRYING TO COMMIT OPERATION " + op.Key.Item1);
+
+                                    handleOperation(op.Key.Item1, op.Key.Item2, old_currentSlot);
+                                    Monitor.PulseAll(executedOperations);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            lock (frozenObjLock)
+            {
+                if (frozen[currentSlot - 1] != 0 && old_currentSlot == currentSlot)
+                {
+                    Console.WriteLine("UNLOCKING ALL WAITING DEPOSITS AND WIDRAWS !");
+                    doingMain = false;
+                    Monitor.PulseAll(frozenObjLock);
                 }
             }
         }
@@ -988,7 +1004,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             const int Port = 1001;
             Program p = new Program();
             p.processId = Int32.Parse(args[0]);
-            
+
             p.parseConfigFile();
 
             Server server = new Server
