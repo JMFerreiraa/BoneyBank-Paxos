@@ -55,7 +55,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
             lock (p.frozenObjLock)
             {
-                if (frozen || p.doingMain)
+                if (frozen)
                 {
                     Monitor.Wait(p.frozenObjLock);
                 }
@@ -99,7 +99,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
             lock (p.frozenObjLock)
             {
-                if (frozen || p.doingMain)
+                if (frozen)
                 {
                     Monitor.Wait(p.frozenObjLock);
                 }
@@ -226,7 +226,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         public commitReply Com(commitRequest request)
         {
 
-            Console.WriteLine("RECEBI UM COMMIT! ESTOU MUITO FELIZ!!!!");
+            Console.WriteLine("FOUYDASS RECEBI A PUTA DE UM COMMIT CARALLHO, TOU BUE FELIX FOUDASS!");
             bool success = false;
             bool mySuccess = false; // MINE DONT TOUCH JOAO, I WILL USE VIOLANCE, necessary to organize responses to client
             try
@@ -397,10 +397,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
         public bool I_am_frozen = false;
         public Object frozenObjLock = new Object();
-        public Object frozenObjLockMain = new Object();
         public Object unblockChannelsBB = new Object();
-
-        public bool doingMain = false;
 
         System.Timers.Timer aTimer = new System.Timers.Timer(2000);
 
@@ -558,15 +555,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                                     currentBalance = accountBalance;
                                 }
                                 executedOperations.Add(Tuple.Create(clientID, operationID));
-                            }
-                        }
-                        else
-                        {
-                            lock (executedSuccessfulOperatios)
-                            {
-                                if (executedSuccessfulOperatios.Keys.Contains(Tuple.Create(clientID, operationID)) &&
-                                    executedSuccessfulOperatios[Tuple.Create(clientID, operationID)])
-                                    currentBalance = accountBalance;
                             }
                         }
                     }
@@ -797,7 +785,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             // Do your stuff and recalculate the timer interval and reset the Timer.
 
             //TO-DO: O que acontece se estiver frozen e ninguem suspeita q está?
-            
+
             lock (primary)
             {
                 primary.b = false;
@@ -807,23 +795,12 @@ namespace BankServer // Note: actual namespace depends on the project name.
             int slot = currentSlot;
             currentSlot = slot + 1;
             int old_currentSlot = currentSlot;
-            bool unlock = false;
 
             lock (frozenObjLock)
             {
                 if(I_am_frozen && frozen[currentSlot - 1] != 0)
                 {
                     Monitor.PulseAll(frozenObjLock);
-                    unlock = true;
-                }
-            }
-            lock (frozenObjLockMain)
-            {
-                doingMain = true;
-                if (I_am_frozen && frozen[currentSlot - 1] != 0)
-                {
-                    Monitor.PulseAll(frozenObjLockMain);
-                    unlock = true;
                 }
             }
 
@@ -838,13 +815,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
 
 
-            lock (frozenObjLockMain)
+            lock (frozenObjLock)
             {
                 if (frozen[currentSlot - 1] == 0)
                 {
                     I_am_frozen = true;
                     Console.WriteLine("SYSTEM FROZEN FOR SLOT {0}", old_currentSlot);
-                    Monitor.Wait(frozenObjLockMain);
+                    Monitor.Wait(frozenObjLock);
                 }
             }
 
@@ -939,7 +916,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     }
                     Console.WriteLine("I have executed " + executedOperations.Count + " in the past!");
                     Console.WriteLine("I have " + remainingCommits.Count + " commits to be made AND I LIKE GAYS, MAINLY HUGOS WITH BIG BIG BIG BIG HEART");
-                    foreach (var op in remainingCommits)
+                    foreach (var op in operations.Keys)
                     {
                         Console.WriteLine("LLALALALAL ---- LALALALLALA ----- TRYING TO COMMIT OPERATION " + op.Item2 + "OUT OF " + operations.Count);
                         try
@@ -947,9 +924,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
                             int index_if_exists =
                             executedOperations.FindIndex(a => a.Equals(Tuple.Create(op.Item1, op.Item2)));
                             if(index_if_exists == -1)
-                                handleOperation(op.Item1, op.Item2, old_currentSlot);
+                                handleOperation(op.Item1, op.Item2, currentSlot);
                             else
-                                handleOperation(op.Item1, op.Item2, old_currentSlot, index_if_exists);
+                                handleOperation(op.Item1, op.Item2, currentSlot, index_if_exists);
                         }
                         catch (Exception exc)
                         {
@@ -966,21 +943,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
                             {
                                 Console.WriteLine("LOLOLOLOLOL ---- LOOLOLOLOLOLOLO ----- TRYING TO COMMIT OPERATION " + op.Key.Item1);
 
-                                handleOperation(op.Key.Item1, op.Key.Item2, old_currentSlot);
+                                handleOperation(op.Key.Item1, op.Key.Item2, currentSlot);
                                 Monitor.PulseAll(executedOperations);
                             }
                         }
                     }
-                }
-            }
-
-            lock (frozenObjLock)
-            {
-                if (frozen[currentSlot - 1] != 0 && old_currentSlot == currentSlot)
-                {
-                    Console.WriteLine("UNLOCKING ALL WAITING DEPOSITS AND WIDRAWS !");
-                    doingMain = false;
-                    Monitor.PulseAll(frozenObjLock);
                 }
             }
         }
