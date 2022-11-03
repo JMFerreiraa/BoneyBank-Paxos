@@ -262,14 +262,18 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 }
                 
                 //Lets apply the operation!
-                Console.WriteLine("Received Commit for client={0} & operationID={1} with seqNumber={2} ",
-                    request.ClientID, request.OperationID, request.SequenceNumber);
+                Console.WriteLine("Received Commit for client={0} & operationID={1} with seqNumber={2} when slot={3} ",
+                    request.ClientID, request.OperationID, request.SequenceNumber, request.Slot);
+                Console.WriteLine("CURRENT EO SIZE " + p.executedOperations.Count());
+
                 lock (p.lockObj)
                 {
                     while (request.SequenceNumber > p.executedOperations.Count())
                     {
+                        Console.WriteLine("DEAD");
                         Monitor.Wait(p.lockObj);
                     }
+                    Console.WriteLine("ALIVE");
                 }
                 
                 lock (p.operations)
@@ -871,11 +875,30 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             if (primary.b)
             {
+                Console.WriteLine("##############################################");
                 Console.WriteLine("Now I need to handle stuff: size = " + operations.Count);
                 
                 List<Tuple<int, int>> remainingCommits = new List<Tuple<int, int>>();
                 int received_responses = 0;
-
+                int number_of_expected_anwsers = 0;
+                Console.WriteLine("|!|");
+                try
+                {
+                    Console.WriteLine("|!|");
+                    for (int i = 0; i < numberOfServers; i++)
+                    {
+                        if (i >= boneysAddresses.Count && status[currentSlot][i] == 1)
+                        {
+                            number_of_expected_anwsers++;
+                        }
+                    }
+                    Console.WriteLine("|!|");
+                }
+                catch(Exception exp)
+                {
+                    Console.WriteLine(exp);
+                }
+                Console.WriteLine(number_of_expected_anwsers);
                 foreach (KeyValuePair<int, string> entry in serversAddresses)
                 {
                     if (entry.Key != processId)
@@ -897,7 +920,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
                                 }
 
                                 received_responses += 1;
-                                if (received_responses + 1 > serversAddresses.Count() / 2)
+                              
+                                if (received_responses == number_of_expected_anwsers -1 )
                                 {
                                     Monitor.PulseAll(remainingCommits);
                                 }
@@ -910,23 +934,24 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 
                 lock (remainingCommits)
                 {
-                    while (received_responses  + 1 <= serversAddresses.Count() / 2)
+                    while (received_responses < number_of_expected_anwsers - 1)
                     {
                         Monitor.Wait(remainingCommits);
                     }
                     Console.WriteLine("I have executed " + executedOperations.Count + " in the past!");
                     Console.WriteLine("I have " + remainingCommits.Count + " commits to be made AND I LIKE GAYS, MAINLY HUGOS WITH BIG BIG BIG BIG HEART");
-                    foreach (var op in operations.Keys)
+                    foreach (var op in remainingCommits)
                     {
-                        Console.WriteLine("LLALALALAL ---- LALALALLALA ----- TRYING TO COMMIT OPERATION " + op.Item2 + "OUT OF " + operations.Count);
+                        Console.WriteLine("LLALALALAL ---- LALALALLALA ----- TRYING TO COMMIT OPERATION " + op.Item2 + " OUT OF " + remainingCommits.Count);
                         try
                         {
+                            float a = 0;
                             int index_if_exists =
                             executedOperations.FindIndex(a => a.Equals(Tuple.Create(op.Item1, op.Item2)));
-                            if(index_if_exists == -1)
-                                handleOperation(op.Item1, op.Item2, currentSlot);
+                            if (index_if_exists == -1)
+                                a = handleOperation(op.Item1, op.Item2, currentSlot);
                             else
-                                handleOperation(op.Item1, op.Item2, currentSlot, index_if_exists);
+                                a = handleOperation(op.Item1, op.Item2, currentSlot, index_if_exists);
                         }
                         catch (Exception exc)
                         {
