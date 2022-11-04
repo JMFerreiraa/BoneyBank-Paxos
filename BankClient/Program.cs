@@ -95,7 +95,6 @@ namespace bankClient // Note: actual namespace depends on the project name.
                 OperationInfo op = new OperationInfo();
                 op.ClientID = clientId;
                 op.OperationID = cs;
-                //IF ALL ERROR HERE might became Stuck ---> time function that detects a deadlock?
                 var reply = client.Deposite(new DepositeRequest { OpInfo = op, Amount = amount });
                 bool pulse = false;
                 lock (sentRequests)

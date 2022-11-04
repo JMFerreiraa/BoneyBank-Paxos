@@ -225,14 +225,13 @@ namespace BankServer // Note: actual namespace depends on the project name.
             return Task.FromResult(Com(request));
         }
 
-        //READ ME --> as vezes ele n recebe tentative mas recebe commit o q o faz falhar na operacao fix later
         public commitReply Com(commitRequest request)
         {
 
             Console.WriteLine("(1)Received Commit for client={0} & operationID={1} with seqNumber={2} ",
                     request.ClientID, request.OperationID, request.SequenceNumber);
             bool success = false;
-            bool mySuccess = false; // MINE DONT TOUCH JOAO, I WILL USE VIOLANCE, necessary to organize responses to client
+            bool mySuccess = false;
             try
             {
                 bool frozen = false;
@@ -256,7 +255,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
                 // If it doesnt contain the current slot it means it was frozen and its not updated
                 if (request.ServerID != p.liderBySlot[p.currentSlot])
-                //Se receber commit de um que não é o lider, retorna false!
                 {
                     Console.WriteLine("Commit refused");
                     return new commitReply
@@ -289,7 +287,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 {
                     if (!p.executedOperations.Contains(Tuple.Create(request.ClientID, request.OperationID)))
                     {
-                        //Dont ask me why but this try makes a bug disapear, nao ele n printa a execção.
                         try
                         {
                             Console.WriteLine("Commit is executing operations!");
@@ -299,7 +296,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                                 p.accountBalance += p.operations[Tuple.Create(request.ClientID, request.OperationID)];
                                 mySuccess = true;
                             }
-                            // Other access here has locks
                             p.executedSuccessfulOperatios.Add(Tuple.Create(request.ClientID, request.OperationID), mySuccess);
                         }
                         catch (Exception e)
@@ -512,7 +508,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         seqN = executedOperations.Count;
                     bool tentativeReply = sendTentative(seqN);
 
-                    if (tentativeReply) //TODO o que fazer se for false? Tentar com um seqN superior?
+                    if (tentativeReply)
                     {
                         bool commitResponse = sendCommit(clientID, operationID, seqN);
                         if (commitResponse)
@@ -589,7 +585,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 }
             }
 
-            //TODO Se houver 1 backup que da false ent aborta?
             bool tentativeOk = true;
             lock (tentativeOkReplies)
             {
@@ -690,7 +685,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             Console.WriteLine("Timer will be started.");
             TimeSpan day = new TimeSpan(24, 00, 00);    // 24 hours in a day.
             TimeSpan now = TimeSpan.Parse(DateTime.Now.ToString("HH:mm:ss"));     // The current time in 24 hour format
-            TimeSpan activationTime = new TimeSpan(Int32.Parse(timeToStart.Split(":").ElementAt(0)), Int32.Parse(timeToStart.Split(":").ElementAt(1)), Int32.Parse(timeToStart.Split(":").ElementAt(2)));    // 4 AM
+            TimeSpan activationTime = new TimeSpan(Int32.Parse(timeToStart.Split(":").ElementAt(0)), Int32.Parse(timeToStart.Split(":").ElementAt(1)), Int32.Parse(timeToStart.Split(":").ElementAt(2)));
 
             TimeSpan timeLeftUntilFirstRun = ((day - now) + activationTime);
             if (timeLeftUntilFirstRun.TotalHours > 24)
@@ -698,7 +693,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
 
             System.Timers.Timer execute = new System.Timers.Timer();
             execute.Interval = 5000; //timeLeftUntilFirstRun.TotalMilliseconds;
-            execute.Elapsed += findLider;    // Event to do your tasks.
+            execute.Elapsed += findLider;
             execute.AutoReset = false;
             execute.Start();
 
@@ -751,8 +746,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                     }
                 }
 
-                //READ ME
-                // SEE WITH SLOT WHEN MESSAGES BUG IT MIGHT BUG HERE | DO PRIMARY BASIADO EM BOOL[SLOTS]
                 Console.WriteLine("AM I PRIMARY TODAY? " + primary.b + " SLOT " + currentSlot);
             }
             catch (Exception ex)
@@ -763,8 +756,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
         public void findLider(object sender, ElapsedEventArgs e)
         {
             // Do your stuff and recalculate the timer interval and reset the Timer.
-
-            //TO-DO: O que acontece se estiver frozen e ninguem suspeita q está?
 
             lock (primary)
             {
@@ -822,7 +813,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 {
                     lock (frozen)
                     {
-                        if (frozen[old_currentSlot - 1] == 1) //CHANGE THIS LATER TO A ifFronzen.
+                        if (frozen[old_currentSlot - 1] == 1)
                         {
                             proposed = server;
                             break;
@@ -905,7 +896,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         {
                             Monitor.Wait(remainingCommits);
                         }
-                        foreach (var op in operations.Keys)
+                        foreach (var op in operations.Keys) // change to remainingCommits before submitting!
                         {
                             try
                             {

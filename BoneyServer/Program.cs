@@ -187,7 +187,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
             Console.WriteLine("Timer will be started.");
             TimeSpan day = new TimeSpan(24, 00, 00);    // 24 hours in a day.
             TimeSpan now = TimeSpan.Parse(DateTime.Now.ToString("HH:mm:ss"));     // The current time in 24 hour format
-            TimeSpan activationTime = new TimeSpan(Int32.Parse(timeToStart.Split(":").ElementAt(0)), Int32.Parse(timeToStart.Split(":").ElementAt(1)), Int32.Parse(timeToStart.Split(":").ElementAt(2)));    // 4 AM
+            TimeSpan activationTime = new TimeSpan(Int32.Parse(timeToStart.Split(":").ElementAt(0)), Int32.Parse(timeToStart.Split(":").ElementAt(1)), Int32.Parse(timeToStart.Split(":").ElementAt(2)));
 
             TimeSpan timeLeftUntilFirstRun = ((day - now) + activationTime);
             if (timeLeftUntilFirstRun.TotalHours > 24)
@@ -195,7 +195,7 @@ namespace boneyServer // Note: actual namespace depends on the project name.
 
             System.Timers.Timer execute = new System.Timers.Timer();
             execute.Interval = 4700; //timeLeftUntilFirstRun.TotalMilliseconds;
-            execute.Elapsed += advanceSlot;    // Event to do your tasks.
+            execute.Elapsed += advanceSlot;
             execute.AutoReset = false;
             execute.Start();
 
@@ -339,7 +339,6 @@ namespace boneyServer // Note: actual namespace depends on the project name.
                 Console.WriteLine("I made consensus and the value consented is=" + outv_tmp + " for slot=" + request.Slot);
             }
             Console.WriteLine("sending reply to server!");
-            //JOAOOOO Tamos a meter a mais na lista! dei fix la em baixo (learner) mesmo file
 
             return new CompareAndSwapReply
             {
