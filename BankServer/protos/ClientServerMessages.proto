@@ -19,6 +19,7 @@ message DepositeRequest{
 message DepositeReply{
 	float amount = 1;
 	bool ok = 2;
+	bool primary = 3;
 }
 
 message WithdrawalRequest{
@@ -29,6 +30,7 @@ message WithdrawalRequest{
 message WithdrawalReply{
 	float amount = 1;
 	bool ok = 2;
+	bool primary = 3;
 }
 
 message ReadRequest{
@@ -36,4 +38,5 @@ message ReadRequest{
 
 message ReadReply{
 	float amount = 1;
+	bool primary = 2;
 }

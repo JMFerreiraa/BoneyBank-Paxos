@@ -83,7 +83,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
             return new DepositeReply
             {
                 Ok = true,
-                Amount = f
+                Amount = f,
+                Primary = p.primary.b
             };
 
         }
@@ -130,7 +131,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
             return new WithdrawalReply
             {
                 Ok = true,
-                Amount = f
+                Amount = f,
+                Primary = p.primary.b
             };
         }
 
@@ -159,7 +161,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
             Console.WriteLine("New Read: Response = {0}", amount);
             return new ReadReply
             {
-                Amount = amount
+                Amount = amount,
+                Primary = p.primary.b
             };
         }
 
@@ -226,7 +229,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
         public commitReply Com(commitRequest request)
         {
 
-            Console.WriteLine("RECEBI UM COMMIT! ESTOU MUITO FELIZ!!!!");
+            Console.WriteLine("(1)Received Commit for client={0} & operationID={1} with seqNumber={2} ",
+                    request.ClientID, request.OperationID, request.SequenceNumber);
             bool success = false;
             bool mySuccess = false; // MINE DONT TOUCH JOAO, I WILL USE VIOLANCE, necessary to organize responses to client
             try
@@ -262,7 +266,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                 }
 
                 //Lets apply the operation!
-                Console.WriteLine("Received Commit for client={0} & operationID={1} with seqNumber={2} ",
+                Console.WriteLine("(2)Received Commit for client={0} & operationID={1} with seqNumber={2} ",
                     request.ClientID, request.OperationID, request.SequenceNumber);
                 lock (p.lockObj)
                 {
@@ -288,7 +292,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         //Dont ask me why but this try makes a bug disapear, nao ele n printa a execção.
                         try
                         {
-                            Console.WriteLine("Doing stufff <3 <3 <3 <3");
+                            Console.WriteLine("Commit is executing operations!");
                             p.executedOperations.Add(Tuple.Create(request.ClientID, request.OperationID));
                             if ((p.accountBalance + p.operations[Tuple.Create(request.ClientID, request.OperationID)]) >= 0)
                             {
@@ -490,48 +494,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         break;
                 }
             }
-
             port = Int32.Parse(processUrl.Split(":")[2]);
-
-            int debug = 0;
-            if (debug == 1)
-            {
-                Console.WriteLine("Initiating Config Parse checker");
-                Console.WriteLine("Clients:");
-                foreach (int c in clientsAddresses.Keys)
-                {
-                    Console.WriteLine(c);
-                }
-                Console.WriteLine("Bank Servers:");
-                foreach (int c in serversAddresses.Keys)
-                {
-                    Console.WriteLine(c);
-                }
-                Console.WriteLine("Boney Servers:");
-                foreach (int c in boneysAddresses.Keys)
-                {
-                    Console.WriteLine(c);
-                }
-                Console.WriteLine("Status:");
-                foreach (int c in status.Keys)
-                {
-                    Console.WriteLine("\tStatus of timestamp " + c);
-                    foreach (int s in status[c])
-                    {
-                        Console.WriteLine(s);
-                    }
-                }
-                Console.WriteLine("Debug Section:");
-                foreach (int server in serversAddresses.Keys)
-                {
-                    Console.WriteLine("Testing Server " + server);
-                    foreach (int element in status[1])
-                    {
-                        Console.WriteLine(element);
-                    }
-                }
-                Console.WriteLine("Finalizing Config Parse checker");
-            }
         }
 
         public float handleOperation(int clientID, int operationID, int slot, int seq = -1)
@@ -539,11 +502,11 @@ namespace BankServer // Note: actual namespace depends on the project name.
             float currentBalance = 0;
             if (primary.b) //Se for primário, vai enviar a seq number deste para todos
             {
-                Console.WriteLine("A tentar obter handle operation lock = " + operationID);
+                Console.WriteLine("A tentar obter lock handleOperation OperationID = " + operationID);
                 bool success = false;
                 lock (executedOperations)
                 {
-                    Console.WriteLine("Entrei no lock handle operation OperationID = " + operationID);
+                    Console.WriteLine("Entrei no lock handleOperation OperationID = " + operationID);
                     int seqN = seq;
                     if (seq == -1)
                         seqN = executedOperations.Count;
@@ -912,7 +875,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                             GrpcChannel channel = GrpcChannel.ForAddress(entry.Value);
                             BankBankCommunications.BankBankCommunicationsClient client =
                                 new BankBankCommunications.BankBankCommunicationsClient(channel);
-                            Console.WriteLine("||||||||||||||||||Sending clean up request");
                             var thread = new Thread(() =>
                             {
                                 var reply = client.Cleanup(new cleanupRequest { });
@@ -943,11 +905,8 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         {
                             Monitor.Wait(remainingCommits);
                         }
-                        Console.WriteLine("I have executed " + executedOperations.Count + " in the past!");
-                        Console.WriteLine("I have " + remainingCommits.Count + " commits to be made AND I LIKE GAYS, MAINLY HUGOS WITH BIG BIG BIG BIG HEART");
                         foreach (var op in operations.Keys)
                         {
-                            Console.WriteLine("LLALALALAL ---- LALALALLALA ----- TRYING TO COMMIT OPERATION " + op.Item2 + "OUT OF " + operations.Count);
                             try
                             {
                                 int index_if_exists =
@@ -963,7 +922,6 @@ namespace BankServer // Note: actual namespace depends on the project name.
                             }
                         }
                     }
-                    Console.WriteLine("Finished handling stuff! 1");
                 }
                 if (primary.b) { 
                     lock (operations)
@@ -974,22 +932,16 @@ namespace BankServer // Note: actual namespace depends on the project name.
                             {
                                 if (!executedOperations.Contains(op.Key))
                                 {
-                                    Console.WriteLine("LOLOLOLOLOL ---- LOOLOLOLOLOLOLO ----- TRYING TO COMMIT OPERATION " + op.Key.Item1);
-
                                     handleOperation(op.Key.Item1, op.Key.Item2, old_currentSlot);
                                     Monitor.PulseAll(executedOperations);
                                 }
                             }
                         }
                     }
-                    Console.WriteLine("Finished handling stuff! 2");
                 }
             }
-            Console.WriteLine("SHOULD I UNLOCK EVERYTHINGGG? my_slot =" + old_currentSlot + "actual slot = " + currentSlot);
             if (old_currentSlot == currentSlot)
             {
-                Console.WriteLine("UNLOCKING ALL WAITING DEPOSITS AND WIDRAWS !");
-
                 lock (frozenObjLock)
                 {
                     doingMain = false;

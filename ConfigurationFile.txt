@@ -4,7 +4,7 @@ P 3 boney http://localhost:10003
 P 4 bank http://localhost:10004
 P 5 bank http://localhost:10008
 P 6 bank http://localhost:10009
-P 7 client
+P 7 client ClientInstructions.txt
 P 8 client
 S 4
 T 20:57:20

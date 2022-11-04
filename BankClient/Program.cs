@@ -24,6 +24,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
         bool on = true; 
         internal object obj = new object();
         internal List<int> sentRequests = new List<int>();
+        internal string fileNameToRead = "";
 
         internal Dictionary<int, string> serversAddresses = new Dictionary<int, string>();
         internal List<Tuple<string, float>> operations_to_do = new List<Tuple<string, float>>();
@@ -113,7 +114,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
                     }
                 }
 
-                Console.WriteLine("Received Deposite Response: " + reply.Amount);
+                Console.WriteLine("Received Deposite Response: " + reply.Amount + " Was it primary? " + reply.Primary);
             }
             catch (RpcException e)
             {
@@ -152,7 +153,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
                     }
                 }
 
-                Console.WriteLine("Received Widraw Response: " + reply.Amount);
+                Console.WriteLine("Received Widraw Response: " + reply.Amount + " Was it primary? " + reply.Primary);
             }
             catch (RpcException e)
             {
@@ -172,7 +173,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
             {
                 var reply = client.Read(new ReadRequest {});
                 f.f = reply.Amount;
-                Console.WriteLine("READ FROM SERVER " + serverN + ": replied with " + reply.Amount);
+                Console.WriteLine("READ FROM SERVER " + serverN + ": replied with " + reply.Amount + " Was it primary? " + reply.Primary);
                 lock (obj)
                 {
                     Monitor.PulseAll(obj);
@@ -212,6 +213,10 @@ namespace bankClient // Note: actual namespace depends on the project name.
                                 serversAddresses.Add(Int32.Parse(config[1]), config[3]);
                                 break;
                             case "client":
+                                if(config.Length == 4)
+                                {
+                                    fileNameToRead = config[3];
+                                }
                                 break;
                         }
                         break;
@@ -235,7 +240,7 @@ namespace bankClient // Note: actual namespace depends on the project name.
 
         public bool parseClientInput()
         {
-            var currentDir = Directory.GetParent(System.IO.Directory.GetCurrentDirectory()).Parent.Parent.Parent + "\\ClientInstructions.txt";
+            var currentDir = Directory.GetParent(System.IO.Directory.GetCurrentDirectory()).Parent.Parent.Parent + "\\" + fileNameToRead;
             string[] lines = File.ReadAllLines(currentDir);
             bool res = false;
 
@@ -314,7 +319,9 @@ namespace bankClient // Note: actual namespace depends on the project name.
 
             var p = new Program();
             p.parseConfigFile();
-            bool auto = p.parseClientInput();
+            bool auto = false;
+            if (p.fileNameToRead != "")
+                auto = p.parseClientInput();
             Console.WriteLine("Automatic input activation status: " + auto);
             p.clientId = Int32.Parse(args[0]);
             p.clientSequenceNumber = 0;
