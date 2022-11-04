@@ -896,36 +896,45 @@ namespace BankServer // Note: actual namespace depends on the project name.
                         {
                             Monitor.Wait(remainingCommits);
                         }
+                        lock (operations)
+                        {
+                            lock (executedOperations)
+                            {
+                                foreach (KeyValuePair<Tuple<int, int>, float> op in operations)
+                                {
+                                    if (!executedOperations.Contains(op.Key) && !remainingCommits.Contains(op.Key))
+                                    {
+                                        remainingCommits.Add(op.Key);
+                                    }
+                                }
+                            }
+                        }
+
                         foreach (var op in operations.Keys) // change to remainingCommits before submitting!
                         {
                             try
                             {
+                                lock (operations)
+                                {
+                                    while (!operations.ContainsKey(Tuple.Create(op.Item1, op.Item2)))
+                                    {
+                                        Monitor.Wait(operations);
+                                    }
+                                }
                                 int index_if_exists =
                                 executedOperations.FindIndex(a => a.Equals(Tuple.Create(op.Item1, op.Item2)));
                                 if (index_if_exists == -1)
                                     handleOperation(op.Item1, op.Item2, old_currentSlot);
-                                else
+                                else 
                                     handleOperation(op.Item1, op.Item2, old_currentSlot, index_if_exists);
+                                lock (executedOperations)
+                                    Monitor.PulseAll(executedOperations);
+                                    
+
                             }
                             catch (Exception exc)
                             {
                                 Console.WriteLine(exc);
-                            }
-                        }
-                    }
-                }
-                if (primary.b) { 
-                    lock (operations)
-                    {
-                        lock (executedOperations)
-                        {
-                            foreach (KeyValuePair<Tuple<int, int>, float> op in operations)
-                            {
-                                if (!executedOperations.Contains(op.Key))
-                                {
-                                    handleOperation(op.Key.Item1, op.Key.Item2, old_currentSlot);
-                                    Monitor.PulseAll(executedOperations);
-                                }
                             }
                         }
                     }
