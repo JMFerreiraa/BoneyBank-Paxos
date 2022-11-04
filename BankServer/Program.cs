@@ -537,7 +537,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
         public float handleOperation(int clientID, int operationID, int slot, int seq = -1)
         {
             float currentBalance = 0;
-            if (primary.b && slot == currentSlot) //Se for primário, vai enviar a seq number deste para todos
+            if (primary.b) //Se for primário, vai enviar a seq number deste para todos
             {
                 Console.WriteLine("A tentar obter handle operation lock = " + operationID);
                 bool success = false;
@@ -898,7 +898,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
             }
             lock (unblockChannelsBB)
             {
-                if (liderBySlot[old_currentSlot] == processId)
+                if (primary.b && liderBySlot[old_currentSlot] == processId)
                 {
                     Console.WriteLine("Now I need to handle stuff: size = " + operations.Count);
 
@@ -963,6 +963,9 @@ namespace BankServer // Note: actual namespace depends on the project name.
                             }
                         }
                     }
+                    Console.WriteLine("Finished handling stuff! 1");
+                }
+                if (primary.b) { 
                     lock (operations)
                     {
                         lock (executedOperations)
@@ -979,16 +982,22 @@ namespace BankServer // Note: actual namespace depends on the project name.
                             }
                         }
                     }
+                    Console.WriteLine("Finished handling stuff! 2");
                 }
             }
-
-            lock (frozenObjLock)
+            Console.WriteLine("SHOULD I UNLOCK EVERYTHINGGG? my_slot =" + old_currentSlot + "actual slot = " + currentSlot);
+            if (old_currentSlot == currentSlot)
             {
-                if (frozen[currentSlot - 1] != 0 && old_currentSlot == currentSlot)
+                Console.WriteLine("UNLOCKING ALL WAITING DEPOSITS AND WIDRAWS !");
+
+                lock (frozenObjLock)
                 {
-                    Console.WriteLine("UNLOCKING ALL WAITING DEPOSITS AND WIDRAWS !");
                     doingMain = false;
                     Monitor.PulseAll(frozenObjLock);
+                }
+                lock (operations)
+                {
+                    Monitor.PulseAll(operations);
                 }
             }
         }
