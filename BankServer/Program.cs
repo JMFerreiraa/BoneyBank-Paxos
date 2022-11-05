@@ -910,7 +910,7 @@ namespace BankServer // Note: actual namespace depends on the project name.
                             }
                         }
 
-                        foreach (var op in operations.Keys) // change to remainingCommits before submitting!
+                        foreach (var op in remainingCommits) // change to remainingCommits before submitting!
                         {
                             try
                             {
